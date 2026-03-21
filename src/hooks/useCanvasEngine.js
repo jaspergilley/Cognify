@@ -30,8 +30,6 @@ export function useCanvasEngine(canvasRef) {
   const [calibrating, setCalibrating] = useState(true);
   const [isBelowMinimum, setIsBelowMinimum] = useState(false);
 
-  const [demoMode, setDemoMode] = useState('cycle'); // 'cycle' | 'gallery' | 'off'
-
   // Mutable engine data ref -- updated every frame, never triggers re-render
   const engineData = useRef({
     hz: 0,
@@ -46,6 +44,9 @@ export function useCanvasEngine(canvasRef) {
 
   // Rolling FPS tracker -- stores last 60 deltas
   const fpsDeltas = useRef([]);
+
+  // External render callback — when set, replaces demo rendering
+  const renderRef = useRef(null);
 
   // Refs for cleanup
   const frameLoopRef = useRef(null);
@@ -151,43 +152,42 @@ export function useCanvasEngine(canvasRef) {
       // Clear canvas with navy background
       clearCanvas(ctx, w, h);
 
-      // --- Stimulus demo rendering ---
-      // Cycle mode: rotate through fixation → shape → mask every few seconds
-      const fixFrames = msToFrames(TIMING.FIXATION_MS, hz);
-      const stimFrames = msToFrames(200, hz); // show shape for 200ms
-      const maskFrames = msToFrames(TIMING.MASK_MS, hz);
-      const cycleLen = fixFrames + stimFrames + maskFrames + msToFrames(300, hz); // + gap
-      const phase = frameCount % cycleLen;
-      const shapeIdx = Math.floor(frameCount / cycleLen) % SHAPE_IDS.length;
+      // Delegate to external render callback if set (training mode)
+      if (renderRef.current) {
+        renderRef.current(ctx, w, h, hz);
+      } else {
+        // --- Stimulus demo rendering ---
+        // Cycle mode: rotate through fixation → shape → mask every few seconds
+        const fixFrames = msToFrames(TIMING.FIXATION_MS, hz);
+        const stimFrames = msToFrames(200, hz); // show shape for 200ms
+        const maskFrames = msToFrames(TIMING.MASK_MS, hz);
+        const cycleLen = fixFrames + stimFrames + maskFrames + msToFrames(300, hz); // + gap
+        const phase = frameCount % cycleLen;
+        const shapeIdx = Math.floor(frameCount / cycleLen) % SHAPE_IDS.length;
 
-      if (phase < fixFrames) {
-        // Fixation cross phase
-        drawFixation(ctx, w, h);
-      } else if (phase < fixFrames + stimFrames) {
-        // Stimulus phase — show central shape + peripheral target
-        drawCentralStimulus(ctx, SHAPE_IDS[shapeIdx], w, h);
-        // Show peripheral target at position matching current shape index
-        drawPeripheralTarget(ctx, shapeIdx % 8, w, h);
-      } else if (phase < fixFrames + stimFrames + maskFrames) {
-        // Mask phase
-        drawPatternMask(ctx, w, h, frameCount);
-      }
-      // else: blank gap between trials
+        if (phase < fixFrames) {
+          drawFixation(ctx, w, h);
+        } else if (phase < fixFrames + stimFrames) {
+          drawCentralStimulus(ctx, SHAPE_IDS[shapeIdx], w, h);
+          drawPeripheralTarget(ctx, shapeIdx % 8, w, h);
+        } else if (phase < fixFrames + stimFrames + maskFrames) {
+          drawPatternMask(ctx, w, h, frameCount);
+        }
 
-      // Draw subtle frame counter
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-      ctx.font = '14px monospace';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText(`frame ${frameCount}`, w - 12, h - 12);
+        // Draw subtle frame counter
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.font = '14px monospace';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(`frame ${frameCount}`, w - 12, h - 12);
 
-      // Draw shape label during stimulus phase
-      if (phase >= fixFrames && phase < fixFrames + stimFrames) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-        ctx.font = '12px monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        ctx.fillText(SHAPE_IDS[shapeIdx], Math.round(w / 2), Math.round(h * 0.7));
+        if (phase >= fixFrames && phase < fixFrames + stimFrames) {
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+          ctx.font = '12px monospace';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillText(SHAPE_IDS[shapeIdx], Math.round(w / 2), Math.round(h * 0.7));
+        }
       }
 
       // Track FPS via rolling deltas
@@ -231,5 +231,5 @@ export function useCanvasEngine(canvasRef) {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { calibrating, engineData, isBelowMinimum, demoMode, setDemoMode };
+  return { calibrating, engineData, isBelowMinimum, renderRef };
 }

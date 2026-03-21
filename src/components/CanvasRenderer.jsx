@@ -24,7 +24,7 @@ import { useCanvasEngine } from '../hooks/useCanvasEngine.js';
  */
 export function CanvasRenderer({ children, onEngineReady }) {
   const canvasRef = useRef(null);
-  const { calibrating, engineData, isBelowMinimum } = useCanvasEngine(canvasRef);
+  const { calibrating, engineData, isBelowMinimum, renderRef } = useCanvasEngine(canvasRef);
 
   return (
     <div className="relative flex items-center justify-center w-full h-full">
@@ -56,7 +56,7 @@ export function CanvasRenderer({ children, onEngineReady }) {
 
       {/* Overlay components receive engine state via render props pattern */}
       {typeof children === 'function'
-        ? children({ engineData, calibrating, isBelowMinimum })
+        ? children({ engineData, calibrating, isBelowMinimum, renderRef })
         : children}
     </div>
   );
