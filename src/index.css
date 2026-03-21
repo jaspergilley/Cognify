@@ -15,3 +15,22 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Canvas touch gesture prevention */
+.training-canvas {
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Orientation warning -- CSS-driven, shows on mobile portrait only */
+.orientation-warning {
+  display: none;
+}
+
+@media (orientation: portrait) and (max-width: 599px) {
+  .orientation-warning {
+    display: flex;
+  }
+}
