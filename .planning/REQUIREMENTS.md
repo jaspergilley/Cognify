@@ -9,15 +9,15 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Canvas Rendering
 
-- [ ] **CANV-01**: Canvas renders at correct DPI scale on standard and HiDPI/Retina displays (devicePixelRatio handling)
-- [ ] **CANV-02**: rAF-based frame loop counts frames accurately (never uses setTimeout/setInterval for stimulus timing)
+- [x] **CANV-01**: Canvas renders at correct DPI scale on standard and HiDPI/Retina displays (devicePixelRatio handling)
+- [x] **CANV-02**: rAF-based frame loop counts frames accurately (never uses setTimeout/setInterval for stimulus timing)
 - [ ] **CANV-03**: Canvas maintains fixed aspect ratio (4:3 or 16:10) and responsive sizing (minimum 600x450px effective)
-- [ ] **CANV-04**: All stimulus positions calculated as percentages of canvas dimensions, not absolute pixels
+- [x] **CANV-04**: All stimulus positions calculated as percentages of canvas dimensions, not absolute pixels
 - [ ] **CANV-05**: Canvas handles window resize without losing rendering state
-- [ ] **CANV-06**: App detects actual display refresh rate at startup by measuring rAF frame intervals
-- [ ] **CANV-07**: App pauses trial timing when tab loses visibility (visibilitychange listener) and resumes cleanly
-- [ ] **CANV-08**: All canvas coordinates rounded to integers (Math.round) to eliminate sub-pixel anti-aliasing
-- [ ] **CANV-09**: performance.now() delta timing companion tracks actual frame durations for dropped frame detection (~20 lines)
+- [x] **CANV-06**: App detects actual display refresh rate at startup by measuring rAF frame intervals
+- [x] **CANV-07**: App pauses trial timing when tab loses visibility (visibilitychange listener) and resumes cleanly
+- [x] **CANV-08**: All canvas coordinates rounded to integers (Math.round) to eliminate sub-pixel anti-aliasing
+- [x] **CANV-09**: performance.now() delta timing companion tracks actual frame durations for dropped frame detection (~20 lines)
 
 ### Stimulus System
 
@@ -144,15 +144,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CANV-01 | Phase 1 | Pending |
-| CANV-02 | Phase 1 | Pending |
+| CANV-01 | Phase 1 | Complete |
+| CANV-02 | Phase 1 | Complete |
 | CANV-03 | Phase 1 | Pending |
-| CANV-04 | Phase 1 | Pending |
+| CANV-04 | Phase 1 | Complete |
 | CANV-05 | Phase 1 | Pending |
-| CANV-06 | Phase 1 | Pending |
-| CANV-07 | Phase 1 | Pending |
-| CANV-08 | Phase 1 | Pending |
-| CANV-09 | Phase 1 | Pending |
+| CANV-06 | Phase 1 | Complete |
+| CANV-07 | Phase 1 | Complete |
+| CANV-08 | Phase 1 | Complete |
+| CANV-09 | Phase 1 | Complete |
 | STIM-01 | Phase 2 | Pending |
 | STIM-02 | Phase 2 | Pending |
 | STIM-03 | Phase 2 | Pending |
