@@ -33,11 +33,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Canvas maintains its aspect ratio and minimum size when the browser window is resized, without losing drawn content
   4. When the browser tab is hidden and re-shown, the frame loop pauses and resumes cleanly (no timing jumps or frozen state)
   5. The app detects the actual display refresh rate at startup and logs the measured frame duration
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md -- Project scaffold (Vite+React+Tailwind) and standalone canvas engine modules
+- [ ] 01-02-PLAN.md -- Canvas React integration, responsive UX, debug panel, and mobile support
 
 ### Phase 2: Stimulus System
 **Goal**: All visual elements of the training protocol render correctly on the canvas -- shapes are distinct, masks obscure afterimages, and display durations are frame-accurate
