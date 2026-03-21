@@ -1,12 +1,13 @@
 /**
  * TrainingApp Component
  *
- * Manages the training UI flow: start button, response buttons, trial results.
- * Uses useTraining hook for trial lifecycle and staircase integration.
+ * Manages training UI: start screen, response buttons, inter-block rest,
+ * and post-session results. Orchestrates the full Exercise 1 flow.
  *
  * @module components/TrainingApp
  */
 
+import { useState, useEffect, useRef } from 'react';
 import { useTraining } from '../hooks/useTraining.js';
 import { ResponseButtons } from './ResponseButtons.jsx';
 import { framesToMs } from '../engine/stimulusRenderer.js';
@@ -18,26 +19,35 @@ import { framesToMs } from '../engine/stimulusRenderer.js';
  */
 export function TrainingApp({ engineData, renderRef }) {
   const training = useTraining(engineData, renderRef);
-  const { uiPhase, startTrial, respond, trialRef, lastTrialData, trialCount } = training;
+  const {
+    uiPhase, startSession, respond, resumeFromRest, finishSession,
+    trialRef, sessionRef, staircaseRef,
+  } = training;
 
   return (
     <>
-      {/* Start button — shown when idle */}
+      {/* Start screen */}
       {uiPhase === 'idle' && (
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-6">
+          <div className="text-white/40 text-sm font-light tracking-wider">
+            COGSPEED
+          </div>
           <button
-            onClick={startTrial}
+            onClick={startSession}
             className="px-8 py-4 rounded-xl bg-white/10 hover:bg-white/20
                        border border-white/20 hover:border-white/40
                        text-white text-lg font-light tracking-wide
                        transition-colors cursor-pointer"
           >
-            Start Trial
+            Start Training
           </button>
+          <div className="text-white/20 text-xs">
+            2 blocks &middot; 30 trials each
+          </div>
         </div>
       )}
 
-      {/* Response buttons — shown during RESPONSE phase */}
+      {/* Response buttons during RESPONSE phase */}
       {uiPhase === 'awaiting_response' && trialRef.current && (
         <ResponseButtons
           choices={trialRef.current.choices}
@@ -45,50 +55,141 @@ export function TrainingApp({ engineData, renderRef }) {
         />
       )}
 
-      {/* Trial result — shown after trial completes */}
-      {uiPhase === 'trial_complete' && lastTrialData.current && (
-        <TrialResult
-          data={lastTrialData.current}
-          stats={training.getStats()}
+      {/* Inter-block rest screen (SESS-05) */}
+      {uiPhase === 'inter_block' && sessionRef.current && (
+        <RestScreen
+          block={sessionRef.current.currentBlock}
+          totalBlocks={sessionRef.current.totalBlocks}
+          restMs={sessionRef.current.restMs}
+          onResume={resumeFromRest}
+        />
+      )}
+
+      {/* Post-session results (SESS-07) */}
+      {uiPhase === 'post_session' && (
+        <PostSessionScreen
+          summary={training.getSessionSummary()}
           threshold={training.getThreshold()}
-          trialCount={trialCount.current}
+          stats={training.getStats()}
           hz={engineData.current?.hz || 60}
-          onNext={startTrial}
+          onFinish={finishSession}
         />
       )}
     </>
   );
 }
 
-function TrialResult({ data, stats, threshold, trialCount, hz, onNext }) {
+/**
+ * Inter-block rest screen with countdown (SESS-05).
+ */
+function RestScreen({ block, totalBlocks, restMs, onResume }) {
+  const [remaining, setRemaining] = useState(Math.ceil(restMs / 1000));
+  const [canContinue, setCanContinue] = useState(false);
+  const intervalRef = useRef(null);
+
+  useEffect(() => {
+    const start = Date.now();
+    intervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - start;
+      const left = Math.max(0, Math.ceil((restMs - elapsed) / 1000));
+      setRemaining(left);
+      if (left <= 0) {
+        setCanContinue(true);
+        clearInterval(intervalRef.current);
+      }
+    }, 250);
+
+    return () => clearInterval(intervalRef.current);
+  }, [restMs]);
+
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-      <div className="flex flex-col items-center gap-4 pointer-events-auto
-                      bg-black/60 backdrop-blur-sm rounded-2xl px-8 py-6 max-w-sm">
-        {/* Result */}
-        <div className={`text-2xl font-bold ${data.correct ? 'text-green-400' : 'text-red-400'}`}>
-          {data.correct ? 'Correct!' : 'Incorrect'}
+      <div className="flex flex-col items-center gap-6 pointer-events-auto
+                      bg-black/60 backdrop-blur-sm rounded-2xl px-10 py-8 max-w-sm">
+        <div className="text-white/60 text-sm font-light tracking-wider">
+          BLOCK {block} OF {totalBlocks} COMPLETE
         </div>
 
-        {/* Stats */}
-        <div className="text-white/60 text-sm space-y-1 text-center">
-          <div>RT: {data.reactionTimeMs}ms</div>
-          <div>Display: {data.displayFrames} frames ({Math.round(framesToMs(data.displayFrames, hz))}ms)</div>
-          <div>Trial {trialCount} &middot; Accuracy: {Math.round(stats.accuracy * 100)}%</div>
-          <div>Reversals: {stats.totalReversals} &middot; Threshold: {threshold.threshold} frames</div>
+        <div className="text-white text-lg font-light">
+          Take a break
         </div>
 
-        {/* Next trial button */}
+        {!canContinue ? (
+          <div className="text-white/40 text-4xl font-light tabular-nums">
+            {remaining}s
+          </div>
+        ) : (
+          <button
+            onClick={onResume}
+            className="px-8 py-3 rounded-xl bg-white/10 hover:bg-white/20
+                       border border-white/20 hover:border-white/40
+                       text-white font-light tracking-wide
+                       transition-colors cursor-pointer"
+          >
+            Continue
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Post-session results screen (SESS-07).
+ */
+function PostSessionScreen({ summary, threshold, stats, hz, onFinish }) {
+  if (!summary) return null;
+
+  const thresholdMs = Math.round(framesToMs(threshold.threshold, hz));
+  const durationMin = Math.round(summary.durationMs / 1000 / 60 * 10) / 10;
+
+  return (
+    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <div className="flex flex-col items-center gap-5 pointer-events-auto
+                      bg-black/60 backdrop-blur-sm rounded-2xl px-10 py-8 max-w-md">
+        <div className="text-white/60 text-sm font-light tracking-wider">
+          SESSION COMPLETE
+        </div>
+
+        {/* Main metric */}
+        <div className="text-center">
+          <div className="text-white text-4xl font-light">
+            {threshold.threshold} <span className="text-lg text-white/40">frames</span>
+          </div>
+          <div className="text-white/40 text-sm mt-1">
+            {thresholdMs}ms processing speed threshold
+          </div>
+        </div>
+
+        {/* Stats grid */}
+        <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+          <Stat label="Accuracy" value={`${Math.round(summary.accuracy * 100)}%`} />
+          <Stat label="Avg RT" value={`${summary.averageRtMs}ms`} />
+          <Stat label="Trials" value={`${summary.totalTrials}`} />
+          <Stat label="Duration" value={`${durationMin}min`} />
+          <Stat label="Reversals" value={`${stats.totalReversals}`} />
+          <Stat label="Method" value={threshold.method === 'reversal' ? 'Standard' : 'Fallback'} />
+        </div>
+
         <button
-          onClick={onNext}
-          className="mt-2 px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20
+          onClick={onFinish}
+          className="mt-2 px-8 py-3 rounded-xl bg-white/10 hover:bg-white/20
                      border border-white/20 hover:border-white/40
                      text-white font-light tracking-wide
                      transition-colors cursor-pointer"
         >
-          Next Trial
+          Done
         </button>
       </div>
     </div>
+  );
+}
+
+function Stat({ label, value }) {
+  return (
+    <>
+      <div className="text-white/40 text-right">{label}</div>
+      <div className="text-white font-light">{value}</div>
+    </>
   );
 }

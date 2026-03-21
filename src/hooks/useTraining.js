@@ -1,9 +1,8 @@
 /**
  * useTraining Hook
  *
- * Manages trial lifecycle, staircase integration, and canvas rendering
- * during training. Sets renderRef on the canvas engine to control
- * what's drawn during active trials.
+ * Manages full training session lifecycle: pre-session display, trial blocks
+ * with staircase integration, inter-block rest, and post-session results.
  *
  * @module hooks/useTraining
  */
@@ -16,13 +15,16 @@ import {
   createStaircase, updateStaircase, getStaircaseStats, calculateThreshold,
 } from '../engine/staircase.js';
 import {
-  drawFixation, drawCentralStimulus, drawPatternMask,
+  drawFixation, drawCentralStimulus, drawPatternMask, msToFrames,
 } from '../engine/stimulusRenderer.js';
-import { SHAPE_IDS } from '../engine/shapePaths.js';
+import { SHAPES, SHAPE_IDS } from '../engine/shapePaths.js';
+import {
+  createSession, advanceSession, resumeAfterRest, getSessionSummary,
+  SESSION_STATE,
+} from '../engine/sessionManager.js';
 
 /**
- * Pick two distinct random shapes from the shape pool.
- * @returns {{ target: string, alternative: string }}
+ * Pick two distinct random shapes.
  */
 function pickShapePair() {
   const pool = [...SHAPE_IDS];
@@ -34,27 +36,100 @@ function pickShapePair() {
 }
 
 /**
+ * Draw pre-session display: both target shapes side by side (SESS-02).
+ */
+function drawPreSession(ctx, w, h, session, progress) {
+  const cx = Math.round(w / 2);
+  const spacing = Math.round(w * 0.15);
+  const shapeSize = Math.round(h * 0.14);
+
+  // Title
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.font = '20px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Remember these shapes', cx, Math.round(h * 0.25));
+
+  // Draw shape A (left)
+  ctx.fillStyle = '#ffffff';
+  SHAPES[session.targetShape](ctx, cx - spacing, Math.round(h * 0.45), shapeSize);
+
+  // Draw shape B (right)
+  ctx.fillStyle = '#ffffff';
+  SHAPES[session.alternativeShape](ctx, cx + spacing, Math.round(h * 0.45), shapeSize);
+
+  // Shape labels
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.font = '14px sans-serif';
+  ctx.fillText(session.targetShape, cx - spacing, Math.round(h * 0.58));
+  ctx.fillText(session.alternativeShape, cx + spacing, Math.round(h * 0.58));
+
+  // Progress bar
+  const barW = Math.round(w * 0.3);
+  const barH = 4;
+  const barX = cx - Math.round(barW / 2);
+  const barY = Math.round(h * 0.72);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+  ctx.fillRect(barX, barY, barW, barH);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+  ctx.fillRect(barX, barY, Math.round(barW * progress), barH);
+}
+
+/**
  * @param {React.RefObject} engineData - Engine data ref from useCanvasEngine
  * @param {React.RefObject} renderRef - Render callback ref from useCanvasEngine
  */
 export function useTraining(engineData, renderRef) {
-  // UI phase drives which overlay is shown
   const [uiPhase, setUiPhase] = useState('idle');
-  // 'idle' | 'running' | 'awaiting_response' | 'trial_complete'
+  // 'idle' | 'pre_session' | 'running' | 'awaiting_response'
+  // | 'inter_block' | 'post_session'
 
+  const sessionRef = useRef(null);
   const trialRef = useRef(null);
   const staircaseRef = useRef(createStaircase(15));
   const lastTrialDataRef = useRef(null);
-  const trialCountRef = useRef(0);
 
-  const startTrial = useCallback(() => {
-    const hz = engineData.current?.hz || 60;
-    const staircase = staircaseRef.current;
+  /**
+   * Start a new training session.
+   */
+  const startSession = useCallback(() => {
     const { target, alternative } = pickShapePair();
-
-    const trial = createTrial({
+    const session = createSession({
       targetShape: target,
       alternativeShape: alternative,
+    });
+    sessionRef.current = session;
+    staircaseRef.current = createStaircase(15);
+    setUiPhase('pre_session');
+
+    // Pre-session display: show both shapes for 3 seconds
+    const frameCounter = { count: 0 };
+    renderRef.current = (ctx, w, h, hz) => {
+      frameCounter.count++;
+      const totalFrames = msToFrames(session.preSessionMs, hz);
+      const progress = Math.min(frameCounter.count / totalFrames, 1);
+
+      drawPreSession(ctx, w, h, session, progress);
+
+      if (frameCounter.count >= totalFrames) {
+        session.state = SESSION_STATE.RUNNING;
+        startNextTrial();
+      }
+    };
+  }, [engineData, renderRef]);
+
+  /**
+   * Start the next trial in the current block.
+   */
+  const startNextTrial = useCallback(() => {
+    const session = sessionRef.current;
+    if (!session) return;
+    const hz = engineData.current?.hz || 60;
+    const staircase = staircaseRef.current;
+
+    const trial = createTrial({
+      targetShape: session.targetShape,
+      alternativeShape: session.alternativeShape,
       displayFrames: staircase.displayTime,
       hz,
     });
@@ -62,7 +137,6 @@ export function useTraining(engineData, renderRef) {
     trialRef.current = trial;
     setUiPhase('running');
 
-    // Set the render callback — called every frame by the canvas engine
     renderRef.current = (ctx, w, h) => {
       const t = trialRef.current;
       if (!t) return;
@@ -70,7 +144,7 @@ export function useTraining(engineData, renderRef) {
       const prevPhase = t.phase;
       tickTrial(t);
 
-      // Detect phase transitions that need React state updates
+      // Handle phase transitions
       if (t.phase !== prevPhase) {
         if (t.phase === TRIAL_PHASE.RESPONSE) {
           setUiPhase('awaiting_response');
@@ -79,38 +153,45 @@ export function useTraining(engineData, renderRef) {
           const data = getTrialData(t);
           lastTrialDataRef.current = data;
           staircaseRef.current = updateStaircase(staircaseRef.current, data.correct);
-          trialCountRef.current++;
           trialRef.current = null;
-          renderRef.current = null;
-          setUiPhase('trial_complete');
+
+          // Advance session
+          const newState = advanceSession(session, data);
+
+          if (newState === SESSION_STATE.INTER_BLOCK) {
+            renderRef.current = null;
+            setUiPhase('inter_block');
+          } else if (newState === SESSION_STATE.POST_SESSION) {
+            renderRef.current = null;
+            setUiPhase('post_session');
+          } else {
+            // Auto-start next trial
+            startNextTrial();
+          }
+          return;
         }
       }
 
-      // Render based on current phase
+      // Render based on trial phase
       switch (t.phase) {
         case TRIAL_PHASE.FIXATION:
           drawFixation(ctx, w, h);
           break;
-
         case TRIAL_PHASE.STIMULUS:
           drawCentralStimulus(ctx, t.targetShape, w, h);
           break;
-
         case TRIAL_PHASE.MASK:
           drawPatternMask(ctx, w, h, t.maskSeed);
           break;
-
-        case TRIAL_PHASE.RESPONSE:
-          // Subtle canvas prompt; actual buttons are HTML overlay
+        case TRIAL_PHASE.RESPONSE: {
           ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
           ctx.font = '18px sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText('Which shape did you see?', Math.round(w / 2), Math.round(h * 0.35));
           break;
-
+        }
         case TRIAL_PHASE.FEEDBACK: {
-          // TRAL-05/06: Green for correct, red for incorrect
           const color = t.correct ? '#22c55e' : '#ef4444';
           const symbol = t.correct ? '\u2713' : '\u2717';
           ctx.fillStyle = color;
@@ -120,31 +201,69 @@ export function useTraining(engineData, renderRef) {
           ctx.fillText(symbol, Math.round(w / 2), Math.round(h / 2));
           break;
         }
-
-        // ITI and COMPLETE: blank canvas (already cleared by engine)
         default:
           break;
+      }
+
+      // Trial progress indicator
+      if (session) {
+        const totalInSession = session.trialsPerBlock * session.totalBlocks;
+        const completedInSession = session.currentBlock * session.trialsPerBlock + session.currentTrial;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.font = '12px monospace';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(
+          `${completedInSession + 1}/${totalInSession}`,
+          Math.round(w) - 12,
+          Math.round(h) - 12,
+        );
       }
     };
   }, [engineData, renderRef]);
 
+  /**
+   * Submit response during a trial.
+   */
   const respond = useCallback((chosenShape) => {
     const trial = trialRef.current;
     if (!trial) return;
     if (submitResponse(trial, chosenShape)) {
-      setUiPhase('running'); // feedback + ITI are auto-timed
+      setUiPhase('running');
     }
   }, []);
 
+  /**
+   * Resume after inter-block rest (SESS-05).
+   */
+  const resumeFromRest = useCallback(() => {
+    const session = sessionRef.current;
+    if (!session) return;
+    resumeAfterRest(session);
+    startNextTrial();
+  }, [startNextTrial]);
+
+  /**
+   * Return to idle after viewing results.
+   */
+  const finishSession = useCallback(() => {
+    sessionRef.current = null;
+    renderRef.current = null;
+    setUiPhase('idle');
+  }, [renderRef]);
+
   return {
     uiPhase,
-    startTrial,
+    startSession,
     respond,
+    resumeFromRest,
+    finishSession,
     trialRef,
+    sessionRef,
     staircaseRef,
     lastTrialData: lastTrialDataRef,
-    trialCount: trialCountRef,
     getStats: () => getStaircaseStats(staircaseRef.current),
     getThreshold: () => calculateThreshold(staircaseRef.current),
+    getSessionSummary: () => sessionRef.current ? getSessionSummary(sessionRef.current) : null,
   };
 }
