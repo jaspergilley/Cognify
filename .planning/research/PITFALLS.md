@@ -2,6 +2,7 @@
 
 **Domain:** Frame-accurate canvas-based adaptive cognitive training app
 **Researched:** 2026-03-21
+**Updated:** 2026-03-21 (added data architecture pitfalls)
 
 ## Critical Pitfalls
 
@@ -48,6 +49,17 @@ ctx.scale(dpr, dpr);
 **Prevention:** Implement the staircase as a pure function with comprehensive unit tests. Test: 3 correct -> step down, 1 incorrect -> step up, reversal on direction change, minimum clamp at 1 frame, consecutive counter reset after step.
 **Detection:** Run a simulated session with known response patterns and verify reversal points match expected values.
 
+### Pitfall 6: Safari ITP 7-Day localStorage Eviction
+**What goes wrong:** Safari deletes ALL script-writable storage -- localStorage, IndexedDB, and Service Worker registrations -- for origins not visited within 7 days. A user who misses one week of training loses their entire profile and session history. This has been WebKit policy since Safari 13.1 / iOS 13.4.
+**Why it happens:** Apple's Intelligent Tracking Prevention (ITP) originally targeted third-party cookies, then expanded to cap all script-writable storage at 7 days. This is a privacy feature designed to prevent cross-site tracking, but it catches single-page training apps as collateral damage.
+**Consequences:** Total data loss. User loses baseline threshold, session history, Exercise 2 unlock progress, and training continuity. For elderly users who are the target demographic, this could mean losing weeks of training data after a hospital stay or vacation.
+**Prevention:**
+1. **Short term (v1):** Add a JSON export/download button so users can manually back up data. Include a "last active" timestamp and warn users who return after 6+ days that their data may be at risk.
+2. **Medium term (v1.1):** Add server-side persistence (Supabase) so data survives client-side eviction. localStorage becomes a cache, not the source of truth.
+3. **Long term:** Request persistent storage via `navigator.storage.persist()` (Safari 17+ supports this). Note: this requests but does not guarantee persistence -- the browser may still deny.
+**Detection:** User reports "all my progress is gone" after not using the app for a week, specifically on Safari/iOS. Reproduce by not visiting the origin for 7 days in Safari.
+**Note:** IndexedDB is equally affected by ITP. The alternative proposal's "IndexedDB as offline buffer" does NOT survive Safari's 7-day eviction any better than localStorage. Both are "script-writable storage" under ITP. Server-side persistence is the only reliable solution.
+
 ## Moderate Pitfalls
 
 ### Pitfall 1: Canvas Resize Handling on Window/Orientation Change
@@ -74,6 +86,19 @@ ctx.scale(dpr, dpr);
 **What goes wrong:** Exercise 2 places peripheral targets at 8 positions around an elliptical path at "70-80% distance from center to edge." If positions are calculated for a 400x400 canvas but the canvas is 800x600, targets appear at wrong proportions.
 **Prevention:** Calculate positions as percentages of canvas dimensions, not absolute pixels. Use `canvasWidth * 0.75` and `canvasHeight * 0.75` for the ellipse radii.
 
+### Pitfall 7: Calling localStorage Directly Instead of Through an Abstraction
+**What goes wrong:** Application code calls `localStorage.getItem()` and `localStorage.setItem()` directly in components, hooks, and utilities. When you later need to add server-side persistence (Supabase, Firebase, etc.), you must find and modify every call site. Some get missed, causing data to split between localStorage and the backend.
+**Why it happens:** localStorage is simple and direct. The abstraction feels unnecessary when you only have 2 keys. But the number of call sites grows faster than expected.
+**Consequences:** Painful backend migration. Data inconsistencies. Some sessions saved locally but not synced. Some profile updates missed.
+**Prevention:** Build a DataService module from day one. All application code calls `DataService.saveSession()`, never `localStorage.setItem()` directly. The DataService internally uses localStorage tonight and can be swapped to Supabase later without touching any callers.
+**Detection:** Grep the codebase for `localStorage.` -- if it appears anywhere outside the DataService module, it is wrong.
+
+### Pitfall 8: Premature Backend Integration Blocking Core Validation
+**What goes wrong:** Developer spends hours integrating Supabase Auth, RLS policies, sync logic, and consent flows before the core timing engine and staircase algorithm are validated. The backend works, but the psychophysics protocol has subtle bugs (wrong reversal tracking, incorrect frame counting, bad mask timing) that go undetected because effort was spent on infrastructure instead of core logic.
+**Why it happens:** The backend feels like "real engineering" and the data loss risk feels urgent. But the data you are persisting has no value if the measurements are wrong.
+**Consequences:** Scientifically invalid data stored durably in PostgreSQL. Worse than losing valid data from localStorage -- you now have a false sense of validated data.
+**Prevention:** Validate the core protocol first. Ship localStorage-only. Verify: does the staircase converge? Are thresholds in the expected range (50-500ms)? Does frame counting match actual display time? Only then add server-side persistence.
+
 ## Minor Pitfalls
 
 ### Pitfall 1: Pattern Mask Not Random Enough
@@ -92,6 +117,10 @@ ctx.scale(dpr, dpr);
 **What goes wrong:** The Exercise 2 unlock gate bypass is meant for testing but accidentally shipped enabled, allowing users to skip the progressive protocol.
 **Prevention:** Gate behind a specific localStorage flag or URL parameter that is not discoverable by normal users. Do not use a visible UI toggle in production.
 
+### Pitfall 5: Applying External Normative Data to an Incompatible Test
+**What goes wrong:** Using NIH Toolbox or Cam-CAN percentile tables to rank CogSpeed users. The NIH Toolbox Pattern Comparison test measures same/different pattern matching; CogSpeed measures shape identification under time pressure. These are different cognitive tasks with different score distributions. A user's CogSpeed threshold does not map to NIH Toolbox percentiles.
+**Prevention:** Do not present percentile rankings from external normative datasets. If percentile context is desired, either (a) use CogSpeed's own normative data collected from consenting users, or (b) show only rough age-bracket reference ranges with clear disclaimers about approximate comparability.
+
 ## Phase-Specific Warnings
 
 | Phase Topic | Likely Pitfall | Mitigation |
@@ -101,8 +130,10 @@ ctx.scale(dpr, dpr);
 | Staircase algorithm | Off-by-one in reversals, wrong threshold calculation | Pure function + exhaustive unit tests before integration |
 | Audio feedback | Autoplay policy, oscillator click/pop | Lazy AudioContext init, gain envelope |
 | Trial flow | Wrong reaction time start point, state machine bugs | Clear documentation of state transitions, integration tests |
-| localStorage persistence | JSON.parse crash, unbounded growth | Try-catch everywhere, schema versioning, data pruning strategy |
+| localStorage persistence | JSON.parse crash, unbounded growth, Safari ITP eviction | Try-catch everywhere, schema versioning, DataService abstraction, plan for server-side persistence |
 | Exercise 2 | Peripheral positions wrong on resize, hardcoded canvas size | Relative positioning (percentages), resize recalculation |
+| Data architecture | Direct localStorage calls scattered across codebase, premature backend | DataService abstraction from day 1, validate protocol before adding backend |
+| Backend integration (v1.1) | RLS policy bugs (silent data loss), auth state management complexity | Test RLS policies exhaustively, use Supabase auth helpers |
 
 ## Sources
 
@@ -112,7 +143,11 @@ ctx.scale(dpr, dpr);
 - [OpenReplay: requestAnimationFrame in React](https://blog.openreplay.com/use-requestanimationframe-in-react-for-smoothest-animations/) -- memory leak prevention
 - [Canvas devicePixelRatio handling](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Basic_animations) -- DPI scaling
 - [Josh Comeau: localStorage in React](https://www.joshwcomeau.com/react/persisting-react-state-in-localstorage/) -- persistence patterns, error handling
+- [Apple ITP 7-Day Storage Cap](https://support.didomi.io/apple-adds-a-7-day-cap-on-all-script-writable-storage) -- Safari script-writable storage eviction (HIGH confidence)
+- [WebKit Storage Policy Updates](https://webkit.org/blog/14403/updates-to-storage-policy/) -- official eviction policies, navigator.storage.persist() (HIGH confidence)
+- [NIH Toolbox Normative Data](https://pmc.ncbi.nlm.nih.gov/articles/PMC4542749/) -- why external norms do not apply (HIGH confidence)
 
 ---
 *Domain pitfalls for: CogSpeed -- adaptive cognitive speed training web app*
 *Researched: 2026-03-21*
+*Updated: 2026-03-21 -- added Safari ITP eviction, DataService abstraction, premature backend, normative data pitfalls*
