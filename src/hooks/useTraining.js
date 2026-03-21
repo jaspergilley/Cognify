@@ -32,6 +32,7 @@ import {
 import {
   saveSession, getStartingFrames, getCompletedSessionCount, loadProfile, saveProfile,
 } from '../services/dataService.js';
+import { initAudio, playCorrect, playIncorrect, playSessionComplete } from '../engine/audioFeedback.js';
 
 const EX2_UNLOCK_SESSIONS = 5; // EXRC-08
 
@@ -127,6 +128,7 @@ export function useTraining(engineData, renderRef) {
    * Start a session with the given exercise type.
    */
   const startSessionWithType = useCallback((exerciseType) => {
+    initAudio(); // AUDO-01: Create AudioContext on user gesture
     const { target, alternative } = pickShapePair();
     const session = createSession({
       targetShape: target,
@@ -224,6 +226,7 @@ export function useTraining(engineData, renderRef) {
             }
             saveProfile(profile);
 
+            playSessionComplete(); // AUDO-04
             renderRef.current = null;
             setUiPhase('post_session');
           } else {
@@ -306,6 +309,8 @@ export function useTraining(engineData, renderRef) {
       if (trial.exerciseType === 2) {
         setUiPhase('awaiting_location_response');
       } else {
+        // Exercise 1: play feedback sound now
+        if (trial.correct) playCorrect(); else playIncorrect();
         setUiPhase('running');
       }
     }
@@ -315,6 +320,8 @@ export function useTraining(engineData, renderRef) {
     const trial = trialRef.current;
     if (!trial) return;
     if (submitLocationResponse(trial, position)) {
+      // Exercise 2: play feedback after both responses
+      if (trial.correct) playCorrect(); else playIncorrect();
       setUiPhase('running');
     }
   }, []);
