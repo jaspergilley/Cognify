@@ -17,6 +17,8 @@ import { createFrameLoop } from '../engine/frameLoop.js';
 import { setupCanvasDPI, calculateAspectRatio } from '../engine/canvasScaler.js';
 import { detectRefreshRate } from '../engine/refreshRateDetector.js';
 import { createVisibilityManager } from '../engine/visibilityManager.js';
+import { clearCanvas, drawFixation, drawCentralStimulus, drawPatternMask, drawPeripheralTarget, drawPeripheralMarkers, TIMING, msToFrames } from '../engine/stimulusRenderer.js';
+import { SHAPE_IDS } from '../engine/shapePaths.js';
 
 /**
  * Wires all engine modules to a canvas element via React lifecycle.
@@ -27,6 +29,8 @@ import { createVisibilityManager } from '../engine/visibilityManager.js';
 export function useCanvasEngine(canvasRef) {
   const [calibrating, setCalibrating] = useState(true);
   const [isBelowMinimum, setIsBelowMinimum] = useState(false);
+
+  const [demoMode, setDemoMode] = useState('cycle'); // 'cycle' | 'gallery' | 'off'
 
   // Mutable engine data ref -- updated every frame, never triggers re-render
   const engineData = useRef({
@@ -133,26 +137,58 @@ export function useCanvasEngine(canvasRef) {
 
     /**
      * Frame callback -- runs every rAF tick.
-     * Clears canvas, draws frame counter, updates engine data ref.
+     * Clears canvas, renders stimulus demo, updates engine data ref.
      */
     function onFrame({ frameCount, delta, timestamp, isDropped }) {
       const canvas = canvasRef.current;
       const ctx = ctxRef.current;
       if (!canvas || !ctx) return;
 
-      const cssWidth = engineData.current.canvasWidth;
-      const cssHeight = engineData.current.canvasHeight;
+      const w = engineData.current.canvasWidth;
+      const h = engineData.current.canvasHeight;
+      const hz = engineData.current.hz || 60;
 
       // Clear canvas with navy background
-      ctx.fillStyle = '#1a1a2e';
-      ctx.fillRect(0, 0, cssWidth, cssHeight);
+      clearCanvas(ctx, w, h);
 
-      // Draw subtle frame counter (visual proof the loop runs)
+      // --- Stimulus demo rendering ---
+      // Cycle mode: rotate through fixation → shape → mask every few seconds
+      const fixFrames = msToFrames(TIMING.FIXATION_MS, hz);
+      const stimFrames = msToFrames(200, hz); // show shape for 200ms
+      const maskFrames = msToFrames(TIMING.MASK_MS, hz);
+      const cycleLen = fixFrames + stimFrames + maskFrames + msToFrames(300, hz); // + gap
+      const phase = frameCount % cycleLen;
+      const shapeIdx = Math.floor(frameCount / cycleLen) % SHAPE_IDS.length;
+
+      if (phase < fixFrames) {
+        // Fixation cross phase
+        drawFixation(ctx, w, h);
+      } else if (phase < fixFrames + stimFrames) {
+        // Stimulus phase — show central shape + peripheral target
+        drawCentralStimulus(ctx, SHAPE_IDS[shapeIdx], w, h);
+        // Show peripheral target at position matching current shape index
+        drawPeripheralTarget(ctx, shapeIdx % 8, w, h);
+      } else if (phase < fixFrames + stimFrames + maskFrames) {
+        // Mask phase
+        drawPatternMask(ctx, w, h, frameCount);
+      }
+      // else: blank gap between trials
+
+      // Draw subtle frame counter
       ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
       ctx.font = '14px monospace';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
-      ctx.fillText(`frame ${frameCount}`, cssWidth - 12, cssHeight - 12);
+      ctx.fillText(`frame ${frameCount}`, w - 12, h - 12);
+
+      // Draw shape label during stimulus phase
+      if (phase >= fixFrames && phase < fixFrames + stimFrames) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.font = '12px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(SHAPE_IDS[shapeIdx], Math.round(w / 2), Math.round(h * 0.7));
+      }
 
       // Track FPS via rolling deltas
       const deltas = fpsDeltas.current;
@@ -195,5 +231,5 @@ export function useCanvasEngine(canvasRef) {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { calibrating, engineData, isBelowMinimum };
+  return { calibrating, engineData, isBelowMinimum, demoMode, setDemoMode };
 }
