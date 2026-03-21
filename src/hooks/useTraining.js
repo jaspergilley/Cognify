@@ -1,21 +1,28 @@
 /**
  * useTraining Hook
  *
- * Manages full training session lifecycle: pre-session display, trial blocks
- * with staircase integration, inter-block rest, and post-session results.
+ * Manages full training session lifecycle for both Exercise 1 and Exercise 2.
+ * Handles pre-session display, trial blocks with staircase, rest periods,
+ * and post-session results.
+ *
+ * EXRC-07: Exercise 2 staircase starts at 250ms (~15 frames at 60Hz)
+ * EXRC-08: Exercise 2 unlocks after 5 Exercise 1 sessions
+ * EXRC-09: Hidden dev toggle to unlock Exercise 2
  *
  * @module hooks/useTraining
  */
 
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import {
-  createTrial, tickTrial, submitResponse, getTrialData, TRIAL_PHASE,
+  createTrial, tickTrial, submitShapeResponse, submitLocationResponse,
+  getTrialData, TRIAL_PHASE,
 } from '../engine/trialEngine.js';
 import {
   createStaircase, updateStaircase, getStaircaseStats, calculateThreshold,
 } from '../engine/staircase.js';
 import {
-  drawFixation, drawCentralStimulus, drawPatternMask, msToFrames,
+  drawFixation, drawCentralStimulus, drawPatternMask, drawPeripheralTarget,
+  drawPeripheralMarkers, msToFrames,
 } from '../engine/stimulusRenderer.js';
 import { SHAPES, SHAPE_IDS } from '../engine/shapePaths.js';
 import {
@@ -23,9 +30,9 @@ import {
   SESSION_STATE,
 } from '../engine/sessionManager.js';
 
-/**
- * Pick two distinct random shapes.
- */
+const EX2_START_FRAMES = 15; // ~250ms at 60Hz (EXRC-07)
+const EX2_UNLOCK_SESSIONS = 5; // EXRC-08
+
 function pickShapePair() {
   const pool = [...SHAPE_IDS];
   const i = Math.floor(Math.random() * pool.length);
@@ -35,40 +42,38 @@ function pickShapePair() {
   return { target, alternative };
 }
 
-/**
- * Draw pre-session display: both target shapes side by side (SESS-02).
- */
 function drawPreSession(ctx, w, h, session, progress) {
   const cx = Math.round(w / 2);
   const spacing = Math.round(w * 0.15);
   const shapeSize = Math.round(h * 0.14);
 
-  // Title
   ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
   ctx.font = '20px sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('Remember these shapes', cx, Math.round(h * 0.25));
+  const exLabel = session.exerciseType === 2 ? 'Exercise 2' : 'Exercise 1';
+  ctx.fillText(`${exLabel} \u2014 Remember these shapes`, cx, Math.round(h * 0.25));
 
-  // Draw shape A (left)
   ctx.fillStyle = '#ffffff';
   SHAPES[session.targetShape](ctx, cx - spacing, Math.round(h * 0.45), shapeSize);
-
-  // Draw shape B (right)
   ctx.fillStyle = '#ffffff';
   SHAPES[session.alternativeShape](ctx, cx + spacing, Math.round(h * 0.45), shapeSize);
 
-  // Shape labels
   ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
   ctx.font = '14px sans-serif';
   ctx.fillText(session.targetShape, cx - spacing, Math.round(h * 0.58));
   ctx.fillText(session.alternativeShape, cx + spacing, Math.round(h * 0.58));
 
-  // Progress bar
+  if (session.exerciseType === 2) {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.font = '13px sans-serif';
+    ctx.fillText('Also locate the peripheral triangle', cx, Math.round(h * 0.66));
+  }
+
   const barW = Math.round(w * 0.3);
   const barH = 4;
   const barX = cx - Math.round(barW / 2);
-  const barY = Math.round(h * 0.72);
+  const barY = Math.round(h * 0.76);
   ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
   ctx.fillRect(barX, barY, barW, barH);
   ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
@@ -76,39 +81,68 @@ function drawPreSession(ctx, w, h, session, progress) {
 }
 
 /**
- * @param {React.RefObject} engineData - Engine data ref from useCanvasEngine
- * @param {React.RefObject} renderRef - Render callback ref from useCanvasEngine
+ * @param {React.RefObject} engineData
+ * @param {React.RefObject} renderRef
  */
 export function useTraining(engineData, renderRef) {
   const [uiPhase, setUiPhase] = useState('idle');
-  // 'idle' | 'pre_session' | 'running' | 'awaiting_response'
+  // 'idle' | 'exercise_select' | 'pre_session' | 'running'
+  // | 'awaiting_shape_response' | 'awaiting_location_response'
   // | 'inter_block' | 'post_session'
 
   const sessionRef = useRef(null);
   const trialRef = useRef(null);
-  const staircaseRef = useRef(createStaircase(15));
+  const staircaseRef = useRef(null);
   const lastTrialDataRef = useRef(null);
+  const completedEx1SessionsRef = useRef(0);
+  const [devUnlock, setDevUnlock] = useState(false);
+
+  // EXRC-09: Dev toggle (Ctrl+Shift+U)
+  useEffect(() => {
+    function onKey(e) {
+      if (e.ctrlKey && e.shiftKey && e.key === 'U') {
+        setDevUnlock((prev) => !prev);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const ex2Available = devUnlock || completedEx1SessionsRef.current >= EX2_UNLOCK_SESSIONS;
 
   /**
-   * Start a new training session.
+   * Show exercise selection screen (or auto-start Ex1 if Ex2 not available).
    */
-  const startSession = useCallback(() => {
+  const beginTraining = useCallback(() => {
+    if (ex2Available) {
+      setUiPhase('exercise_select');
+    } else {
+      startSessionWithType(1);
+    }
+  }, [ex2Available]);
+
+  /**
+   * Start a session with the given exercise type.
+   */
+  const startSessionWithType = useCallback((exerciseType) => {
     const { target, alternative } = pickShapePair();
     const session = createSession({
       targetShape: target,
       alternativeShape: alternative,
     });
+    session.exerciseType = exerciseType;
     sessionRef.current = session;
-    staircaseRef.current = createStaircase(15);
+
+    // EXRC-07: Exercise 2 starts at ~250ms
+    const startFrames = exerciseType === 2 ? EX2_START_FRAMES : 15;
+    staircaseRef.current = createStaircase(startFrames);
     setUiPhase('pre_session');
 
-    // Pre-session display: show both shapes for 3 seconds
     const frameCounter = { count: 0 };
     renderRef.current = (ctx, w, h, hz) => {
       frameCounter.count++;
       const totalFrames = msToFrames(session.preSessionMs, hz);
       const progress = Math.min(frameCounter.count / totalFrames, 1);
-
       drawPreSession(ctx, w, h, session, progress);
 
       if (frameCounter.count >= totalFrames) {
@@ -118,9 +152,6 @@ export function useTraining(engineData, renderRef) {
     };
   }, [engineData, renderRef]);
 
-  /**
-   * Start the next trial in the current block.
-   */
   const startNextTrial = useCallback(() => {
     const session = sessionRef.current;
     if (!session) return;
@@ -132,6 +163,7 @@ export function useTraining(engineData, renderRef) {
       alternativeShape: session.alternativeShape,
       displayFrames: staircase.displayTime,
       hz,
+      exerciseType: session.exerciseType || 1,
     });
 
     trialRef.current = trial;
@@ -144,10 +176,12 @@ export function useTraining(engineData, renderRef) {
       const prevPhase = t.phase;
       tickTrial(t);
 
-      // Handle phase transitions
       if (t.phase !== prevPhase) {
-        if (t.phase === TRIAL_PHASE.RESPONSE) {
-          setUiPhase('awaiting_response');
+        if (t.phase === TRIAL_PHASE.RESPONSE_SHAPE) {
+          setUiPhase('awaiting_shape_response');
+        }
+        if (t.phase === TRIAL_PHASE.RESPONSE_LOCATION) {
+          setUiPhase('awaiting_location_response');
         }
         if (t.phase === TRIAL_PHASE.COMPLETE) {
           const data = getTrialData(t);
@@ -155,35 +189,42 @@ export function useTraining(engineData, renderRef) {
           staircaseRef.current = updateStaircase(staircaseRef.current, data.correct);
           trialRef.current = null;
 
-          // Advance session
           const newState = advanceSession(session, data);
-
           if (newState === SESSION_STATE.INTER_BLOCK) {
             renderRef.current = null;
             setUiPhase('inter_block');
           } else if (newState === SESSION_STATE.POST_SESSION) {
+            if (session.exerciseType === 1) {
+              completedEx1SessionsRef.current++;
+            }
             renderRef.current = null;
             setUiPhase('post_session');
           } else {
-            // Auto-start next trial
             startNextTrial();
           }
           return;
         }
       }
 
-      // Render based on trial phase
+      // Render
       switch (t.phase) {
         case TRIAL_PHASE.FIXATION:
           drawFixation(ctx, w, h);
           break;
+
         case TRIAL_PHASE.STIMULUS:
           drawCentralStimulus(ctx, t.targetShape, w, h);
+          // EXRC-03: Exercise 2 shows peripheral target simultaneously
+          if (t.exerciseType === 2 && t.peripheralPosition >= 0) {
+            drawPeripheralTarget(ctx, t.peripheralPosition, w, h);
+          }
           break;
+
         case TRIAL_PHASE.MASK:
           drawPatternMask(ctx, w, h, t.maskSeed);
           break;
-        case TRIAL_PHASE.RESPONSE: {
+
+        case TRIAL_PHASE.RESPONSE_SHAPE: {
           ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
           ctx.font = '18px sans-serif';
           ctx.textAlign = 'center';
@@ -191,6 +232,18 @@ export function useTraining(engineData, renderRef) {
           ctx.fillText('Which shape did you see?', Math.round(w / 2), Math.round(h * 0.35));
           break;
         }
+
+        case TRIAL_PHASE.RESPONSE_LOCATION: {
+          // Draw peripheral markers on canvas; HTML buttons provide interaction
+          drawPeripheralMarkers(ctx, w, h);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+          ctx.font = '18px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('Where was the triangle?', Math.round(w / 2), Math.round(h * 0.2));
+          break;
+        }
+
         case TRIAL_PHASE.FEEDBACK: {
           const color = t.correct ? '#22c55e' : '#ef4444';
           const symbol = t.correct ? '\u2713' : '\u2717';
@@ -201,41 +254,44 @@ export function useTraining(engineData, renderRef) {
           ctx.fillText(symbol, Math.round(w / 2), Math.round(h / 2));
           break;
         }
+
         default:
           break;
       }
 
-      // Trial progress indicator
+      // Progress indicator
       if (session) {
-        const totalInSession = session.trialsPerBlock * session.totalBlocks;
-        const completedInSession = session.currentBlock * session.trialsPerBlock + session.currentTrial;
+        const total = session.trialsPerBlock * session.totalBlocks;
+        const done = session.currentBlock * session.trialsPerBlock + session.currentTrial;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
         ctx.font = '12px monospace';
         ctx.textAlign = 'right';
         ctx.textBaseline = 'bottom';
-        ctx.fillText(
-          `${completedInSession + 1}/${totalInSession}`,
-          Math.round(w) - 12,
-          Math.round(h) - 12,
-        );
+        ctx.fillText(`${done + 1}/${total}`, Math.round(w) - 12, Math.round(h) - 12);
       }
     };
   }, [engineData, renderRef]);
 
-  /**
-   * Submit response during a trial.
-   */
-  const respond = useCallback((chosenShape) => {
+  const respondShape = useCallback((chosenShape) => {
     const trial = trialRef.current;
     if (!trial) return;
-    if (submitResponse(trial, chosenShape)) {
+    if (submitShapeResponse(trial, chosenShape)) {
+      if (trial.exerciseType === 2) {
+        setUiPhase('awaiting_location_response');
+      } else {
+        setUiPhase('running');
+      }
+    }
+  }, []);
+
+  const respondLocation = useCallback((position) => {
+    const trial = trialRef.current;
+    if (!trial) return;
+    if (submitLocationResponse(trial, position)) {
       setUiPhase('running');
     }
   }, []);
 
-  /**
-   * Resume after inter-block rest (SESS-05).
-   */
   const resumeFromRest = useCallback(() => {
     const session = sessionRef.current;
     if (!session) return;
@@ -243,9 +299,6 @@ export function useTraining(engineData, renderRef) {
     startNextTrial();
   }, [startNextTrial]);
 
-  /**
-   * Return to idle after viewing results.
-   */
   const finishSession = useCallback(() => {
     sessionRef.current = null;
     renderRef.current = null;
@@ -254,16 +307,20 @@ export function useTraining(engineData, renderRef) {
 
   return {
     uiPhase,
-    startSession,
-    respond,
+    beginTraining,
+    startSessionWithType,
+    respondShape,
+    respondLocation,
     resumeFromRest,
     finishSession,
     trialRef,
     sessionRef,
     staircaseRef,
     lastTrialData: lastTrialDataRef,
-    getStats: () => getStaircaseStats(staircaseRef.current),
-    getThreshold: () => calculateThreshold(staircaseRef.current),
+    ex2Available,
+    devUnlock,
+    getStats: () => staircaseRef.current ? getStaircaseStats(staircaseRef.current) : { totalTrials: 0, totalReversals: 0, accuracy: 0, currentDisplayTime: 0 },
+    getThreshold: () => staircaseRef.current ? calculateThreshold(staircaseRef.current) : { threshold: 0, method: 'fallback-last', reversalsUsed: 0 },
     getSessionSummary: () => sessionRef.current ? getSessionSummary(sessionRef.current) : null,
   };
 }

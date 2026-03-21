@@ -1,55 +1,57 @@
 /**
  * Trial Engine
  *
- * State machine for a single trial: fixation → stimulus → mask → response → feedback → ITI.
- * Mutable state for frame-loop performance. Pure module (no React).
+ * State machine for a single trial supporting both Exercise 1 (central ID)
+ * and Exercise 2 (central ID + peripheral location).
  *
- * TRAL-01: Complete trial sequence
- * TRAL-02: Response gating (only in RESPONSE phase)
- * TRAL-03: RT measured from response prompt appearance
- * TRAL-04: RT captured as timestamp of first tap/click
- * TRAL-05/06: Visual feedback (green correct, red incorrect)
- * TRAL-07: ITI blank screen
- * TRAL-08: Per-trial data recording
+ * Exercise 1: FIXATION → STIMULUS → MASK → RESPONSE_SHAPE → FEEDBACK → ITI → COMPLETE
+ * Exercise 2: FIXATION → STIMULUS → MASK → RESPONSE_SHAPE → RESPONSE_LOCATION → FEEDBACK → ITI → COMPLETE
+ *
+ * TRAL-01 through TRAL-08, EXRC-01 through EXRC-06
  *
  * @module engine/trialEngine
  */
 
 import { msToFrames, TIMING } from './stimulusRenderer.js';
 
-/** Trial phase constants */
 export const TRIAL_PHASE = {
   FIXATION: 'FIXATION',
   STIMULUS: 'STIMULUS',
   MASK: 'MASK',
-  RESPONSE: 'RESPONSE',
+  RESPONSE_SHAPE: 'RESPONSE_SHAPE',
+  RESPONSE_LOCATION: 'RESPONSE_LOCATION',
   FEEDBACK: 'FEEDBACK',
   ITI: 'ITI',
   COMPLETE: 'COMPLETE',
 };
 
-const PHASE_ORDER = [
-  TRIAL_PHASE.FIXATION,
-  TRIAL_PHASE.STIMULUS,
-  TRIAL_PHASE.MASK,
-  TRIAL_PHASE.RESPONSE,
-  TRIAL_PHASE.FEEDBACK,
-  TRIAL_PHASE.ITI,
-  TRIAL_PHASE.COMPLETE,
-];
+/**
+ * Get next timed phase (non-response phases only).
+ */
+function getNextTimedPhase(phase) {
+  switch (phase) {
+    case TRIAL_PHASE.FIXATION: return TRIAL_PHASE.STIMULUS;
+    case TRIAL_PHASE.STIMULUS: return TRIAL_PHASE.MASK;
+    case TRIAL_PHASE.MASK:     return TRIAL_PHASE.RESPONSE_SHAPE;
+    case TRIAL_PHASE.FEEDBACK: return TRIAL_PHASE.ITI;
+    case TRIAL_PHASE.ITI:      return TRIAL_PHASE.COMPLETE;
+    default: return null;
+  }
+}
 
 /**
  * Create a new trial.
  *
  * @param {object} config
- * @param {string} config.targetShape - Shape ID the user must identify
- * @param {string} config.alternativeShape - Decoy shape ID
- * @param {number} config.displayFrames - Stimulus duration in frames (from staircase)
+ * @param {string} config.targetShape - Shape the user must identify
+ * @param {string} config.alternativeShape - Decoy shape
+ * @param {number} config.displayFrames - Stimulus duration in frames
  * @param {number} config.hz - Display refresh rate
+ * @param {number} [config.exerciseType=1] - 1 = central only, 2 = central + peripheral
+ * @param {number} [config.peripheralPosition] - Target position (0-7) for Exercise 2
  * @returns {object} Mutable trial state
  */
-export function createTrial({ targetShape, alternativeShape, displayFrames, hz }) {
-  // Randomize button order so target position varies (EXRC-02)
+export function createTrial({ targetShape, alternativeShape, displayFrames, hz, exerciseType = 1, peripheralPosition }) {
   const choices = Math.random() < 0.5
     ? [targetShape, alternativeShape]
     : [alternativeShape, targetShape];
@@ -57,6 +59,7 @@ export function createTrial({ targetShape, alternativeShape, displayFrames, hz }
   return {
     phase: TRIAL_PHASE.FIXATION,
     phaseFrame: 0,
+    exerciseType,
 
     // Stimulus config
     targetShape,
@@ -65,41 +68,57 @@ export function createTrial({ targetShape, alternativeShape, displayFrames, hz }
     displayFrames,
     hz,
 
-    // Phase durations (in frames)
+    // Exercise 2: peripheral target
+    peripheralPosition: exerciseType === 2
+      ? (peripheralPosition ?? Math.floor(Math.random() * 8))
+      : -1,
+
+    // Phase durations
     fixationFrames: msToFrames(TIMING.FIXATION_MS, hz),
     maskFrames: msToFrames(TIMING.MASK_MS, hz),
     feedbackFrames: msToFrames(TIMING.FEEDBACK_MS, hz),
     itiFrames: msToFrames(TIMING.ITI_MS, hz),
 
-    // Consistent mask seed across mask frames
     maskSeed: (Math.random() * 0xffff) | 0,
 
-    // Response data (populated during RESPONSE phase)
+    // Response data
     responsePromptTime: 0,
-    responseTime: 0,
     chosenShape: null,
+    shapeCorrect: null,
+    shapeReactionTimeMs: 0,
+
+    // Exercise 2 location response
+    locationPromptTime: 0,
+    chosenPosition: -1,
+    locationCorrect: null,
+    locationReactionTimeMs: 0,
+
+    // Combined result
     correct: null,
     reactionTimeMs: 0,
   };
 }
 
 /**
- * Advance trial by one frame. Call once per rAF tick.
- * Mutates trial state for performance.
+ * Advance trial by one frame (timed phases only).
  *
- * @param {object} trial - Trial state from createTrial
- * @returns {boolean} True if phase changed this frame
+ * @param {object} trial
+ * @returns {boolean} True if phase changed
  */
 export function tickTrial(trial) {
-  // Don't tick phases that wait for external input or are done
-  if (trial.phase === TRIAL_PHASE.RESPONSE || trial.phase === TRIAL_PHASE.COMPLETE) {
+  const { phase } = trial;
+
+  // Response and complete phases don't tick
+  if (phase === TRIAL_PHASE.RESPONSE_SHAPE ||
+      phase === TRIAL_PHASE.RESPONSE_LOCATION ||
+      phase === TRIAL_PHASE.COMPLETE) {
     return false;
   }
 
   trial.phaseFrame++;
 
   let duration;
-  switch (trial.phase) {
+  switch (phase) {
     case TRIAL_PHASE.FIXATION: duration = trial.fixationFrames; break;
     case TRIAL_PHASE.STIMULUS: duration = trial.displayFrames; break;
     case TRIAL_PHASE.MASK:     duration = trial.maskFrames; break;
@@ -109,12 +128,13 @@ export function tickTrial(trial) {
   }
 
   if (trial.phaseFrame >= duration) {
-    const nextIdx = PHASE_ORDER.indexOf(trial.phase) + 1;
-    trial.phase = PHASE_ORDER[nextIdx];
+    const nextPhase = getNextTimedPhase(phase);
+    if (!nextPhase) return false;
+
+    trial.phase = nextPhase;
     trial.phaseFrame = 0;
 
-    // TRAL-03: Record when response prompt appears
-    if (trial.phase === TRIAL_PHASE.RESPONSE) {
+    if (nextPhase === TRIAL_PHASE.RESPONSE_SHAPE) {
       trial.responsePromptTime = performance.now();
     }
 
@@ -125,42 +145,97 @@ export function tickTrial(trial) {
 }
 
 /**
- * Submit user's response. Only works during RESPONSE phase (TRAL-02).
- * TRAL-04: RT captured as timestamp of first tap/click after prompt.
+ * Submit shape identification response (EXRC-01, EXRC-04).
+ * For Exercise 1: advances to FEEDBACK.
+ * For Exercise 2: advances to RESPONSE_LOCATION.
  *
- * @param {object} trial - Trial state
- * @param {string} chosenShape - Shape ID the user selected
- * @returns {boolean} True if response was accepted
+ * @param {object} trial
+ * @param {string} chosenShape
+ * @returns {boolean} True if accepted
  */
-export function submitResponse(trial, chosenShape) {
-  if (trial.phase !== TRIAL_PHASE.RESPONSE) return false;
+export function submitShapeResponse(trial, chosenShape) {
+  if (trial.phase !== TRIAL_PHASE.RESPONSE_SHAPE) return false;
 
-  trial.responseTime = performance.now();
+  const now = performance.now();
   trial.chosenShape = chosenShape;
-  trial.correct = chosenShape === trial.targetShape;
-  trial.reactionTimeMs = Math.round(trial.responseTime - trial.responsePromptTime);
+  trial.shapeCorrect = chosenShape === trial.targetShape;
+  trial.shapeReactionTimeMs = Math.round(now - trial.responsePromptTime);
 
-  // Advance to feedback phase
+  if (trial.exerciseType === 2) {
+    // EXRC-04/05: Move to peripheral location response
+    trial.phase = TRIAL_PHASE.RESPONSE_LOCATION;
+    trial.phaseFrame = 0;
+    trial.locationPromptTime = performance.now();
+  } else {
+    // Exercise 1: shape response is the only response
+    trial.correct = trial.shapeCorrect;
+    trial.reactionTimeMs = trial.shapeReactionTimeMs;
+    trial.phase = TRIAL_PHASE.FEEDBACK;
+    trial.phaseFrame = 0;
+  }
+
+  return true;
+}
+
+/**
+ * Submit peripheral location response (EXRC-05, Exercise 2 only).
+ * EXRC-06: Trial correct only if BOTH shape AND location are correct.
+ *
+ * @param {object} trial
+ * @param {number} chosenPosition - Position index (0-7)
+ * @returns {boolean} True if accepted
+ */
+export function submitLocationResponse(trial, chosenPosition) {
+  if (trial.phase !== TRIAL_PHASE.RESPONSE_LOCATION) return false;
+
+  const now = performance.now();
+  trial.chosenPosition = chosenPosition;
+  trial.locationCorrect = chosenPosition === trial.peripheralPosition;
+  trial.locationReactionTimeMs = Math.round(now - trial.locationPromptTime);
+
+  // EXRC-06: Combined judgment
+  trial.correct = trial.shapeCorrect && trial.locationCorrect;
+  trial.reactionTimeMs = trial.shapeReactionTimeMs + trial.locationReactionTimeMs;
+
   trial.phase = TRIAL_PHASE.FEEDBACK;
   trial.phaseFrame = 0;
   return true;
 }
 
 /**
- * Extract recorded per-trial data (TRAL-08).
+ * Legacy alias — calls submitShapeResponse.
+ */
+export function submitResponse(trial, chosenShape) {
+  return submitShapeResponse(trial, chosenShape);
+}
+
+/**
+ * Extract per-trial data record (TRAL-08).
  *
- * @param {object} trial - Trial state
- * @returns {object} Per-trial data record
+ * @param {object} trial
+ * @returns {object}
  */
 export function getTrialData(trial) {
-  return {
+  const data = {
+    exerciseType: trial.exerciseType,
     targetShape: trial.targetShape,
     alternativeShape: trial.alternativeShape,
     displayFrames: trial.displayFrames,
     displayTimeMs: Math.round((trial.displayFrames / trial.hz) * 1000 * 10) / 10,
     chosenShape: trial.chosenShape,
+    shapeCorrect: trial.shapeCorrect,
     correct: trial.correct,
     reactionTimeMs: trial.reactionTimeMs,
     timestamp: Date.now(),
   };
+
+  if (trial.exerciseType === 2) {
+    data.peripheralPosition = trial.peripheralPosition;
+    data.chosenPosition = trial.chosenPosition;
+    data.locationCorrect = trial.locationCorrect;
+    data.shapeReactionTimeMs = trial.shapeReactionTimeMs;
+    data.locationReactionTimeMs = trial.locationReactionTimeMs;
+  }
+
+  return data;
 }

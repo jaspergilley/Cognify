@@ -1,8 +1,8 @@
 /**
  * TrainingApp Component
  *
- * Manages training UI: start screen, response buttons, inter-block rest,
- * and post-session results. Orchestrates the full Exercise 1 flow.
+ * Full training UI: exercise selection, response buttons (shape + location),
+ * inter-block rest, and post-session results for both Exercise 1 and 2.
  *
  * @module components/TrainingApp
  */
@@ -10,18 +10,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTraining } from '../hooks/useTraining.js';
 import { ResponseButtons } from './ResponseButtons.jsx';
+import { PeripheralResponse } from './PeripheralResponse.jsx';
 import { framesToMs } from '../engine/stimulusRenderer.js';
 
-/**
- * @param {object} props
- * @param {React.RefObject} props.engineData - Engine data ref
- * @param {React.RefObject} props.renderRef - Render callback ref
- */
 export function TrainingApp({ engineData, renderRef }) {
   const training = useTraining(engineData, renderRef);
   const {
-    uiPhase, startSession, respond, resumeFromRest, finishSession,
-    trialRef, sessionRef, staircaseRef,
+    uiPhase, beginTraining, startSessionWithType, respondShape, respondLocation,
+    resumeFromRest, finishSession, trialRef, sessionRef, ex2Available, devUnlock,
   } = training;
 
   return (
@@ -33,7 +29,7 @@ export function TrainingApp({ engineData, renderRef }) {
             COGSPEED
           </div>
           <button
-            onClick={startSession}
+            onClick={beginTraining}
             className="px-8 py-4 rounded-xl bg-white/10 hover:bg-white/20
                        border border-white/20 hover:border-white/40
                        text-white text-lg font-light tracking-wide
@@ -43,19 +39,33 @@ export function TrainingApp({ engineData, renderRef }) {
           </button>
           <div className="text-white/20 text-xs">
             2 blocks &middot; 30 trials each
+            {devUnlock && <span className="text-yellow-400/40 ml-2">[DEV]</span>}
           </div>
         </div>
       )}
 
-      {/* Response buttons during RESPONSE phase */}
-      {uiPhase === 'awaiting_response' && trialRef.current && (
-        <ResponseButtons
-          choices={trialRef.current.choices}
-          onChoose={respond}
+      {/* Exercise selection (when Exercise 2 is available) */}
+      {uiPhase === 'exercise_select' && (
+        <ExerciseSelect
+          onSelect={startSessionWithType}
+          devUnlock={devUnlock}
         />
       )}
 
-      {/* Inter-block rest screen (SESS-05) */}
+      {/* Shape response buttons */}
+      {uiPhase === 'awaiting_shape_response' && trialRef.current && (
+        <ResponseButtons
+          choices={trialRef.current.choices}
+          onChoose={respondShape}
+        />
+      )}
+
+      {/* Peripheral location response (Exercise 2) */}
+      {uiPhase === 'awaiting_location_response' && trialRef.current && (
+        <PeripheralResponse onChoose={respondLocation} />
+      )}
+
+      {/* Inter-block rest */}
       {uiPhase === 'inter_block' && sessionRef.current && (
         <RestScreen
           block={sessionRef.current.currentBlock}
@@ -65,13 +75,14 @@ export function TrainingApp({ engineData, renderRef }) {
         />
       )}
 
-      {/* Post-session results (SESS-07) */}
+      {/* Post-session results */}
       {uiPhase === 'post_session' && (
         <PostSessionScreen
           summary={training.getSessionSummary()}
           threshold={training.getThreshold()}
           stats={training.getStats()}
           hz={engineData.current?.hz || 60}
+          exerciseType={sessionRef.current?.exerciseType || 1}
           onFinish={finishSession}
         />
       )}
@@ -79,9 +90,46 @@ export function TrainingApp({ engineData, renderRef }) {
   );
 }
 
-/**
- * Inter-block rest screen with countdown (SESS-05).
- */
+function ExerciseSelect({ onSelect, devUnlock }) {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <div className="flex flex-col items-center gap-6 pointer-events-auto
+                      bg-black/60 backdrop-blur-sm rounded-2xl px-10 py-8">
+        <div className="text-white/60 text-sm font-light tracking-wider">
+          SELECT EXERCISE
+        </div>
+
+        <div className="flex gap-4">
+          <button
+            onClick={() => onSelect(1)}
+            className="flex flex-col items-center gap-2 px-6 py-4 rounded-xl
+                       bg-white/10 hover:bg-white/20
+                       border border-white/20 hover:border-white/40
+                       transition-colors cursor-pointer min-w-[140px]"
+          >
+            <span className="text-white text-lg font-light">Exercise 1</span>
+            <span className="text-white/40 text-xs">Central identification</span>
+          </button>
+
+          <button
+            onClick={() => onSelect(2)}
+            className="flex flex-col items-center gap-2 px-6 py-4 rounded-xl
+                       bg-white/10 hover:bg-white/20
+                       border border-white/20 hover:border-white/40
+                       transition-colors cursor-pointer min-w-[140px]"
+          >
+            <span className="text-white text-lg font-light">Exercise 2</span>
+            <span className="text-white/40 text-xs">Divided attention</span>
+            {devUnlock && (
+              <span className="text-yellow-400/50 text-[10px]">DEV UNLOCK</span>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RestScreen({ block, totalBlocks, restMs, onResume }) {
   const [remaining, setRemaining] = useState(Math.ceil(restMs / 1000));
   const [canContinue, setCanContinue] = useState(false);
@@ -98,7 +146,6 @@ function RestScreen({ block, totalBlocks, restMs, onResume }) {
         clearInterval(intervalRef.current);
       }
     }, 250);
-
     return () => clearInterval(intervalRef.current);
   }, [restMs]);
 
@@ -109,15 +156,9 @@ function RestScreen({ block, totalBlocks, restMs, onResume }) {
         <div className="text-white/60 text-sm font-light tracking-wider">
           BLOCK {block} OF {totalBlocks} COMPLETE
         </div>
-
-        <div className="text-white text-lg font-light">
-          Take a break
-        </div>
-
+        <div className="text-white text-lg font-light">Take a break</div>
         {!canContinue ? (
-          <div className="text-white/40 text-4xl font-light tabular-nums">
-            {remaining}s
-          </div>
+          <div className="text-white/40 text-4xl font-light tabular-nums">{remaining}s</div>
         ) : (
           <button
             onClick={onResume}
@@ -134,10 +175,7 @@ function RestScreen({ block, totalBlocks, restMs, onResume }) {
   );
 }
 
-/**
- * Post-session results screen (SESS-07).
- */
-function PostSessionScreen({ summary, threshold, stats, hz, onFinish }) {
+function PostSessionScreen({ summary, threshold, stats, hz, exerciseType, onFinish }) {
   if (!summary) return null;
 
   const thresholdMs = Math.round(framesToMs(threshold.threshold, hz));
@@ -148,10 +186,9 @@ function PostSessionScreen({ summary, threshold, stats, hz, onFinish }) {
       <div className="flex flex-col items-center gap-5 pointer-events-auto
                       bg-black/60 backdrop-blur-sm rounded-2xl px-10 py-8 max-w-md">
         <div className="text-white/60 text-sm font-light tracking-wider">
-          SESSION COMPLETE
+          EXERCISE {exerciseType} &mdash; SESSION COMPLETE
         </div>
 
-        {/* Main metric */}
         <div className="text-center">
           <div className="text-white text-4xl font-light">
             {threshold.threshold} <span className="text-lg text-white/40">frames</span>
@@ -161,7 +198,6 @@ function PostSessionScreen({ summary, threshold, stats, hz, onFinish }) {
           </div>
         </div>
 
-        {/* Stats grid */}
         <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
           <Stat label="Accuracy" value={`${Math.round(summary.accuracy * 100)}%`} />
           <Stat label="Avg RT" value={`${summary.averageRtMs}ms`} />
