@@ -29,8 +29,10 @@ import {
   createSession, advanceSession, resumeAfterRest, getSessionSummary,
   SESSION_STATE,
 } from '../engine/sessionManager.js';
+import {
+  saveSession, getStartingFrames, getCompletedSessionCount, loadProfile, saveProfile,
+} from '../services/dataService.js';
 
-const EX2_START_FRAMES = 15; // ~250ms at 60Hz (EXRC-07)
 const EX2_UNLOCK_SESSIONS = 5; // EXRC-08
 
 function pickShapePair() {
@@ -94,7 +96,7 @@ export function useTraining(engineData, renderRef) {
   const trialRef = useRef(null);
   const staircaseRef = useRef(null);
   const lastTrialDataRef = useRef(null);
-  const completedEx1SessionsRef = useRef(0);
+  const completedEx1SessionsRef = useRef(getCompletedSessionCount(1));
   const [devUnlock, setDevUnlock] = useState(false);
 
   // EXRC-09: Dev toggle (Ctrl+Shift+U)
@@ -133,8 +135,9 @@ export function useTraining(engineData, renderRef) {
     session.exerciseType = exerciseType;
     sessionRef.current = session;
 
-    // EXRC-07: Exercise 2 starts at ~250ms
-    const startFrames = exerciseType === 2 ? EX2_START_FRAMES : 15;
+    // STRC-10: Start at previous threshold × 1.1 (or default)
+    const hz = engineData.current?.hz || 60;
+    const startFrames = getStartingFrames(exerciseType, hz);
     staircaseRef.current = createStaircase(startFrames);
     setUiPhase('pre_session');
 
@@ -194,9 +197,33 @@ export function useTraining(engineData, renderRef) {
             renderRef.current = null;
             setUiPhase('inter_block');
           } else if (newState === SESSION_STATE.POST_SESSION) {
+            // Persist session data (DATA-03)
+            const summary = getSessionSummary(session);
+            const thresholdResult = calculateThreshold(staircaseRef.current);
+            saveSession({
+              exerciseType: session.exerciseType,
+              targetShape: session.targetShape,
+              alternativeShape: session.alternativeShape,
+              thresholdFrames: thresholdResult.threshold,
+              thresholdMethod: thresholdResult.method,
+              accuracy: summary.accuracy,
+              totalTrials: summary.totalTrials,
+              averageRtMs: summary.averageRtMs,
+              durationMs: summary.durationMs,
+              trials: session.trials,
+              completedAt: Date.now(),
+            });
+
+            // Update profile
+            const profile = loadProfile();
             if (session.exerciseType === 1) {
-              completedEx1SessionsRef.current++;
+              profile.completedEx1Sessions = (profile.completedEx1Sessions || 0) + 1;
+              completedEx1SessionsRef.current = profile.completedEx1Sessions;
+            } else {
+              profile.completedEx2Sessions = (profile.completedEx2Sessions || 0) + 1;
             }
+            saveProfile(profile);
+
             renderRef.current = null;
             setUiPhase('post_session');
           } else {
