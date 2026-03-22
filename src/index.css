@@ -326,33 +326,36 @@ input[type="range"] {
   appearance: none;
   background: transparent;
   cursor: pointer;
+  height: 20px;
 }
 input[type="range"]::-webkit-slider-runnable-track {
-  height: 8px;
+  height: 6px;
   border-radius: 9999px;
   background: var(--color-surface-container-highest);
 }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 24px;
-  height: 24px;
+  appearance: none;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: var(--color-primary);
-  margin-top: -8px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  margin-top: -7px;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 input[type="range"]::-moz-range-track {
-  height: 8px;
+  height: 6px;
   border-radius: 9999px;
   background: var(--color-surface-container-highest);
 }
 input[type="range"]::-moz-range-thumb {
-  width: 24px;
-  height: 24px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: var(--color-primary);
-  border: none;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* Focus rings for accessibility */
