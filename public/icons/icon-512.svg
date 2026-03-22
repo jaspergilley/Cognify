@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bolt-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="brain-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    <filter id="bolt-glow">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="102" fill="#0b0f19"/>
+
+  <!-- Subtle radial glow behind icon -->
+  <circle cx="256" cy="256" r="160" fill="#0ea5e9" opacity="0.06"/>
+  <circle cx="256" cy="256" r="100" fill="#0ea5e9" opacity="0.04"/>
+
+  <!-- Stylized brain outline - left hemisphere -->
+  <path d="M192 148 C152 148, 106 186, 106 228 C106 254, 116 278, 138 292 C128 310, 128 330, 142 346 C154 362, 174 368, 196 362 C208 374, 228 378, 244 368 L244 256 L244 154 C228 144, 208 144, 192 148Z"
+        fill="none" stroke="url(#brain-grad)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+
+  <!-- Stylized brain outline - right hemisphere -->
+  <path d="M320 148 C360 148, 406 186, 406 228 C406 254, 396 278, 374 292 C384 310, 384 330, 370 346 C358 362, 338 368, 316 362 C304 374, 284 378, 268 368 L268 256 L268 154 C284 144, 304 144, 320 148Z"
+        fill="none" stroke="url(#brain-grad)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+
+  <!-- Brain folds - left -->
+  <path d="M154 206 C176 196, 204 206, 220 222" fill="none" stroke="url(#brain-grad)" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
+  <path d="M132 260 C160 244, 192 254, 214 264" fill="none" stroke="url(#brain-grad)" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
+  <path d="M148 312 C168 302, 188 306, 204 316" fill="none" stroke="url(#brain-grad)" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- Brain folds - right -->
+  <path d="M358 206 C336 196, 308 206, 292 222" fill="none" stroke="url(#brain-grad)" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
+  <path d="M380 260 C352 244, 320 254, 298 264" fill="none" stroke="url(#brain-grad)" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
+  <path d="M364 312 C344 302, 324 306, 308 316" fill="none" stroke="url(#brain-grad)" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- Central lightning bolt - the "speed" element -->
+  <path d="M278 134 L234 260 L268 260 L228 380 L310 238 L272 238 Z"
+        fill="url(#bolt-grad)" filter="url(#bolt-glow)" opacity="0.95"/>
+
+  <!-- Highlight on bolt top -->
+  <path d="M278 134 L256 200 L278 200 Z" fill="#7dd3fc" opacity="0.45"/>
+
+  <!-- Tiny sparkle accents -->
+  <circle cx="170" cy="170" r="3" fill="#0ea5e9" opacity="0.5"/>
+  <circle cx="342" cy="170" r="3" fill="#0ea5e9" opacity="0.5"/>
+  <circle cx="168" cy="340" r="2.5" fill="#0ea5e9" opacity="0.4"/>
+  <circle cx="344" cy="340" r="2.5" fill="#0ea5e9" opacity="0.4"/>
+</svg>

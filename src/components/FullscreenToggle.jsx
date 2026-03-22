@@ -18,6 +18,10 @@ import { useState, useEffect, useCallback } from 'react';
 export function FullscreenToggle() {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // Hide in standalone PWA mode (already fullscreen)
+  const isStandalone = typeof window !== 'undefined' &&
+    (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone);
+
   // Track fullscreen state changes
   useEffect(() => {
     function handleFullscreenChange() {
@@ -27,6 +31,8 @@ export function FullscreenToggle() {
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
+
+  if (isStandalone) return null;
 
   const toggleFullscreen = useCallback(() => {
     try {
@@ -47,13 +53,13 @@ export function FullscreenToggle() {
   return (
     <button
       onClick={toggleFullscreen}
-      className="fixed bottom-3 right-3 z-40 p-2 rounded bg-white/5 hover:bg-white/15 text-white/30 hover:text-white/70 transition-all duration-200 opacity-30 hover:opacity-100"
+      className="fixed bottom-28 right-3 z-40 p-3 min-w-12 min-h-12 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-all duration-200 opacity-30 hover:opacity-100 flex items-center justify-center shadow-sm border border-outline-variant/20 safe-bottom"
       title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
       aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
     >
       {isFullscreen ? (
         // Collapse icon (exit fullscreen)
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="6 1 6 6 1 6" />
           <polyline points="10 15 10 10 15 10" />
           <polyline points="15 6 10 6 10 1" />
@@ -61,7 +67,7 @@ export function FullscreenToggle() {
         </svg>
       ) : (
         // Expand icon (enter fullscreen)
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="1 6 1 1 6 1" />
           <polyline points="15 10 15 15 10 15" />
           <polyline points="10 1 15 1 15 6" />

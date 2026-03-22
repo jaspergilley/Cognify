@@ -18,13 +18,12 @@ import { useState } from 'react';
  * @returns {JSX.Element|null}
  */
 export function SmallScreenWarning({ isBelowMinimum }) {
-  const [dismissed, setDismissed] = useState(false);
-
-  if (!isBelowMinimum || dismissed) return null;
+  // Screen scaling warning disabled for mobile optimization
+  return null;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-amber-900/80 backdrop-blur-sm px-4 py-3 flex items-center justify-between gap-3">
-      <p className="text-amber-100/90 text-xs font-light">
+      <p className="text-amber-100/90 text-xs font-medium">
         Your screen is smaller than the recommended minimum (600x450). Display quality may be affected.
       </p>
       <button

@@ -15,15 +15,18 @@
  * @returns {JSX.Element}
  */
 export function OrientationWarning() {
+  // Disabled to allow mobile portrait play
+  return null;
+
   return (
-    <div className="orientation-warning fixed inset-0 z-[100] bg-[#1a1a2e] flex flex-col items-center justify-center gap-6">
+    <div className="orientation-warning fixed inset-0 z-[100] bg-surface flex flex-col items-center justify-center gap-6">
       {/* Rotate device icon */}
       <svg
         width="64"
         height="64"
         viewBox="0 0 64 64"
         fill="none"
-        className="text-white/40"
+        className="text-charcoal/70"
         aria-hidden="true"
       >
         {/* Phone outline in portrait */}
@@ -57,7 +60,7 @@ export function OrientationWarning() {
         />
       </svg>
 
-      <p className="text-white/40 text-sm font-light tracking-wider text-center px-8">
+      <p className="text-charcoal/70 text-sm font-medium tracking-wider text-center px-8">
         Please rotate your device to landscape
       </p>
     </div>

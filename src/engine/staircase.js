@@ -18,11 +18,11 @@
  * @module engine/staircase
  */
 
-/** Minimum display duration in frames */
-const MIN_FRAMES = 1;
+/** Minimum display duration in frames (~50ms at 60Hz — visible but challenging) */
+export const MIN_FRAMES = 3;
 
-/** Maximum display duration in frames */
-const MAX_FRAMES = 30;
+/** Maximum display duration in frames (~1000ms at 60Hz — comfortable starting range) */
+export const MAX_FRAMES = 60;
 
 /** Consecutive correct answers needed to step down */
 const UP_COUNT = 3;
@@ -64,7 +64,7 @@ const MIN_REVERSALS_FOR_THRESHOLD = 2;
  * @param {number} [startFrames=15] - Initial display duration in frames
  * @returns {StaircaseState}
  */
-export function createStaircase(startFrames = 15) {
+export function createStaircase(startFrames = 30) {
   return {
     displayTime: clamp(startFrames),
     correctStreak: 0,
@@ -83,7 +83,7 @@ export function createStaircase(startFrames = 15) {
  *
  * STRC-02: 3 correct → step down (displayTime - 1)
  * STRC-03: 1 incorrect → step up (displayTime + 2), reset streak
- * STRC-04: Clamp to [1, 30]
+ * STRC-04: Clamp to [MIN_FRAMES, MAX_FRAMES]
  * STRC-05: No reversal recorded if step was blocked by clamping
  * STRC-06: Reversal when direction changes
  *
@@ -209,4 +209,85 @@ export function getStaircaseStats(state) {
  */
 function clamp(frames) {
   return Math.max(MIN_FRAMES, Math.min(MAX_FRAMES, frames));
+}
+
+// --- Double Staircase (UFOV protocol) ---
+
+/**
+ * Create a double staircase — two interleaved instances per UFOV patent.
+ * Reduces predictability and improves threshold stability.
+ *
+ * @param {number} [startFrames=20] - Initial display duration in frames
+ * @returns {object} Double staircase state
+ */
+export function createDoubleStaircase(startFrames = 30) {
+  return {
+    staircase1: createStaircase(startFrames),
+    staircase2: createStaircase(startFrames),
+    activeIndex: 0,
+  };
+}
+
+/**
+ * Randomly select which staircase to use for the next trial.
+ * Returns the active staircase state.
+ *
+ * @param {object} ds - Double staircase state
+ * @returns {StaircaseState} The selected staircase
+ */
+export function getActiveStaircase(ds) {
+  ds.activeIndex = Math.random() < 0.5 ? 0 : 1;
+  return ds.activeIndex === 0 ? ds.staircase1 : ds.staircase2;
+}
+
+/**
+ * Update the currently active staircase after a trial result.
+ *
+ * @param {object} ds - Double staircase state
+ * @param {boolean} correct - Whether the trial was correct
+ * @returns {object} Updated double staircase state
+ */
+export function updateDoubleStaircase(ds, correct) {
+  if (ds.activeIndex === 0) {
+    ds.staircase1 = updateStaircase(ds.staircase1, correct);
+  } else {
+    ds.staircase2 = updateStaircase(ds.staircase2, correct);
+  }
+  return ds;
+}
+
+/**
+ * Calculate combined threshold from both interleaved staircases.
+ *
+ * @param {object} ds - Double staircase state
+ * @returns {{ threshold: number, method: string, reversalsUsed: number }}
+ */
+export function calculateDoubleThreshold(ds) {
+  const t1 = calculateThreshold(ds.staircase1);
+  const t2 = calculateThreshold(ds.staircase2);
+  return {
+    threshold: Math.round(((t1.threshold + t2.threshold) / 2) * 10) / 10,
+    method: `double:${t1.method}/${t2.method}`,
+    reversalsUsed: t1.reversalsUsed + t2.reversalsUsed,
+  };
+}
+
+/**
+ * Get summary statistics combining both staircases.
+ *
+ * @param {object} ds - Double staircase state
+ * @returns {{ totalTrials: number, totalReversals: number, accuracy: number, currentDisplayTime: number }}
+ */
+export function getDoubleStaircaseStats(ds) {
+  const s1 = getStaircaseStats(ds.staircase1);
+  const s2 = getStaircaseStats(ds.staircase2);
+  const totalTrials = s1.totalTrials + s2.totalTrials;
+  return {
+    totalTrials,
+    totalReversals: s1.totalReversals + s2.totalReversals,
+    accuracy: totalTrials > 0
+      ? (s1.accuracy * s1.totalTrials + s2.accuracy * s2.totalTrials) / totalTrials
+      : 0,
+    currentDisplayTime: Math.round((s1.currentDisplayTime + s2.currentDisplayTime) / 2),
+  };
 }

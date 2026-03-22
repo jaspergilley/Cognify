@@ -90,7 +90,7 @@ Each task was committed atomically:
 - `index.html` - Entry HTML with viewport meta and theme-color
 - `src/main.jsx` - React entry point with StrictMode
 - `src/index.css` - Tailwind import + immersive navy theme styles
-- `src/App.jsx` - Placeholder app with centered "CogSpeed" text
+- `src/App.jsx` - Placeholder app with centered "Cognify" text
 - `src/engine/frameLoop.js` - rAF frame loop with delta timing and dropped frame detection
 - `src/engine/canvasScaler.js` - DPI scaling and 4:3 aspect ratio calculation
 - `src/engine/refreshRateDetector.js` - Display refresh rate measurement via rAF median

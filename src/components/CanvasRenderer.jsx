@@ -22,16 +22,15 @@ import { useCanvasEngine } from '../hooks/useCanvasEngine.js';
  * @param {function} [props.onEngineReady] - Callback receiving engineData ref when engine initializes
  * @returns {JSX.Element}
  */
-export function CanvasRenderer({ children, onEngineReady }) {
+export function CanvasRenderer({ children }) {
   const canvasRef = useRef(null);
   const { calibrating, engineData, isBelowMinimum, renderRef } = useCanvasEngine(canvasRef);
 
   return (
-    <div className="relative flex items-center justify-center w-full h-full">
-      {/* Canvas container -- maintains 4:3 ratio, fills available space */}
+    <div className="relative flex items-center justify-center w-full h-full flex-1">
+      {/* Canvas container -- fills available space */}
       <div
-        className="relative flex items-center justify-center"
-        style={{ aspectRatio: '4 / 3', maxWidth: '100%', maxHeight: '100%' }}
+        className="relative flex items-center justify-center w-full h-full"
       >
         <canvas
           ref={canvasRef}
@@ -46,10 +45,20 @@ export function CanvasRenderer({ children, onEngineReady }) {
 
         {/* Calibration overlay */}
         {calibrating && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#1a1a2e]">
-            <span className="text-white/30 text-sm font-light tracking-wider">
-              Calibrating display...
-            </span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background gap-6">
+            <div className="relative w-20 h-20">
+              <div className="absolute inset-0 rounded-full border-2 border-outline-variant/30" />
+              <div className="absolute inset-0 rounded-full border-2 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin" style={{ animationDuration: '1.2s' }} />
+              <div className="absolute inset-3 rounded-full border-2 border-t-transparent border-r-primary/40 border-b-transparent border-l-transparent animate-spin" style={{ animationDuration: '1.8s', animationDirection: 'reverse' }} />
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <span className="text-on-surface-variant text-base font-headline font-medium tracking-wider">
+                Detecting your display
+              </span>
+              <span className="text-on-surface-variant text-sm font-medium">
+                Measuring refresh rate...
+              </span>
+            </div>
           </div>
         )}
       </div>

@@ -261,6 +261,23 @@ function drawRegularPolygon(ctx, cx, cy, size, sides, startAngle) {
 }
 
 /**
+ * Draw a downward-pointing triangle.
+ * Used as distractor shape in Exercise 3 per UFOV protocol.
+ * NOT included in SHAPE_IDS — only used for distractors.
+ */
+export function drawTriangleDown(ctx, cx, cy, size) {
+  const half = size / 2;
+  const x = Math.round(cx);
+  const y = Math.round(cy);
+  ctx.beginPath();
+  ctx.moveTo(x, Math.round(y + half));
+  ctx.lineTo(Math.round(x + half), Math.round(y - half));
+  ctx.lineTo(Math.round(x - half), Math.round(y - half));
+  ctx.closePath();
+  ctx.fill();
+}
+
+/**
  * Shape registry — maps shape IDs to draw functions.
  * Used by stimulus renderer to draw shapes by name.
  */

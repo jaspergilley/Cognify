@@ -33,7 +33,7 @@ Two-layer architecture: a **React UI layer** for screens, buttons, and state man
 |                                                                  |
 |  +------------------------------------------------------------+ |
 |  |  Persistence Layer (localStorage wrapper)                   | |
-|  |  cogspeed_profile | cogspeed_sessions                       | |
+|  |  cognify_profile | cognify_sessions                       | |
 |  +------------------------------------------------------------+ |
 +------------------------------------------------------------------+
 ```
@@ -186,7 +186,7 @@ const STORAGE_VERSION = 1;
 
 function loadProfile() {
   try {
-    const raw = localStorage.getItem('cogspeed_profile');
+    const raw = localStorage.getItem('cognify_profile');
     if (!raw) return createDefaultProfile();
     const data = JSON.parse(raw);
     if (data._version !== STORAGE_VERSION) {
@@ -200,7 +200,7 @@ function loadProfile() {
 }
 
 function saveProfile(profile) {
-  localStorage.setItem('cogspeed_profile', JSON.stringify({
+  localStorage.setItem('cognify_profile', JSON.stringify({
     ...profile,
     _version: STORAGE_VERSION,
   }));
@@ -305,5 +305,5 @@ This is a client-side SPA with no backend. "Scalability" means: how does the arc
 - [OpenReplay: requestAnimationFrame in React](https://blog.openreplay.com/use-requestanimationframe-in-react-for-smoothest-animations/) -- cleanup patterns, memory leak prevention
 
 ---
-*Architecture patterns for: CogSpeed -- adaptive cognitive speed training web app*
+*Architecture patterns for: Cognify -- adaptive cognitive speed training web app*
 *Researched: 2026-03-21*

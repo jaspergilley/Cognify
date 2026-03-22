@@ -16,6 +16,9 @@
  */
 
 let audioCtx = null;
+let masterGain = null;
+let audioEnabled = true;
+let volumeLevel = 0.75;
 
 /**
  * Ensure AudioContext exists (AUDO-01).
@@ -24,6 +27,9 @@ let audioCtx = null;
 function ensureContext() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.connect(audioCtx.destination);
+    masterGain.gain.value = volumeLevel;
   }
   // Resume if suspended (browser autoplay policy)
   if (audioCtx.state === 'suspended') {
@@ -41,6 +47,7 @@ function ensureContext() {
  * @param {number} [volume=0.12] - Gain (AUDO-07: quiet)
  */
 function playTone(frequency, duration, type = 'sine', volume = 0.12) {
+  if (!audioEnabled) return;
   const ctx = ensureContext();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
@@ -55,7 +62,7 @@ function playTone(frequency, duration, type = 'sine', volume = 0.12) {
   gain.gain.linearRampToValueAtTime(0, ctx.currentTime + duration);
 
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(masterGain);
 
   osc.start(ctx.currentTime);
   osc.stop(ctx.currentTime + duration);
@@ -79,6 +86,7 @@ export function playIncorrect() {
  * Session complete chime (AUDO-04): ascending two-note chime.
  */
 export function playSessionComplete() {
+  if (!audioEnabled) return;
   const ctx = ensureContext();
   const now = ctx.currentTime;
 
@@ -100,7 +108,7 @@ function playChimeNote(ctx, freq, startTime, duration) {
   gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
 
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(masterGain);
 
   osc.start(startTime);
   osc.stop(startTime + duration);
@@ -112,4 +120,37 @@ function playChimeNote(ctx, freq, startTime, duration) {
  */
 export function initAudio() {
   ensureContext();
+}
+
+/**
+ * Enable or disable audio playback.
+ * @param {boolean} enabled
+ */
+export function setAudioEnabled(enabled) {
+  audioEnabled = enabled;
+}
+
+/**
+ * Set master volume level.
+ * @param {number} level - 0 to 100
+ */
+export function setVolume(level) {
+  volumeLevel = Math.max(0, Math.min(1, level / 100));
+  if (masterGain) {
+    masterGain.gain.value = volumeLevel;
+  }
+}
+
+/**
+ * Apply saved audio settings (call on app startup).
+ * @param {{ audioEnabled?: boolean, volume?: number }} settings
+ */
+export function applyAudioSettings(settings) {
+  if (settings) {
+    audioEnabled = settings.audioEnabled !== false;
+    volumeLevel = Math.max(0, Math.min(1, (settings.volume ?? 75) / 100));
+    if (masterGain) {
+      masterGain.gain.value = volumeLevel;
+    }
+  }
 }

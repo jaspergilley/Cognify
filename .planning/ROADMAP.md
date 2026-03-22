@@ -1,8 +1,8 @@
-# Roadmap: CogSpeed
+# Roadmap: Cognify
 
 ## Overview
 
-CogSpeed delivers frame-accurate adaptive cognitive speed training by building up from foundational canvas rendering through the complete ACTIVE study protocol. The build order is strictly dependency-driven: the canvas engine must render before stimuli can appear, stimuli must exist before the staircase can adapt them, the staircase must work before trials can sequence, and trials must run before sessions can orchestrate them. Exercise 1 validates the entire pipeline end-to-end before Exercise 2 extends it. Data persistence and audio feedback are layered on once the core training loop is proven.
+Cognify delivers frame-accurate adaptive cognitive speed training by building up from foundational canvas rendering through the complete ACTIVE study protocol. The build order is strictly dependency-driven: the canvas engine must render before stimuli can appear, stimuli must exist before the staircase can adapt them, the staircase must work before trials can sequence, and trials must run before sessions can orchestrate them. Exercise 1 validates the entire pipeline end-to-end before Exercise 2 extends it. Data persistence and audio feedback are layered on once the core training loop is proven.
 
 ## Phases
 

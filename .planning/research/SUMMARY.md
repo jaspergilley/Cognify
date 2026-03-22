@@ -1,4 +1,4 @@
-# Research Summary: CogSpeed
+# Research Summary: Cognify
 
 **Domain:** Frame-accurate canvas-based adaptive cognitive speed training web app
 **Researched:** 2026-03-21 (updated with cross-analysis)
@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-CogSpeed is a client-side React SPA that implements the ACTIVE study's speed-of-processing training protocol using psychophysics-standard techniques. The core technical challenge is frame-accurate stimulus presentation -- displaying visual stimuli for an exact number of screen refresh frames, then masking them. This requires HTML5 Canvas with requestAnimationFrame for rendering, completely bypassing React's render cycle for timing-critical operations.
+Cognify is a client-side React SPA that implements the ACTIVE study's speed-of-processing training protocol using psychophysics-standard techniques. The core technical challenge is frame-accurate stimulus presentation -- displaying visual stimuli for an exact number of screen refresh frames, then masking them. This requires HTML5 Canvas with requestAnimationFrame for rendering, completely bypassing React's render cycle for timing-critical operations.
 
 The 2026 React ecosystem has a clear standard stack for this type of application. Vite 8 (released March 2026) is the unambiguous choice for bundling -- it uses Rolldown (Rust-based) for dramatically faster builds, and CRA is effectively dead. React 19.2 is the current stable release. Tailwind CSS v4.2 brings CSS-first configuration with no JS config file. Vitest 4.1 is the native test runner for Vite projects. All of these are mature, well-documented, and highly compatible with each other.
 
@@ -110,5 +110,5 @@ Based on cross-analysis, the roadmap should be restructured into two tiers: a ha
 - **Post-validation priorities:** After tonight's ship, need to decide whether to pursue the alternative proposal's backend additions or focus on completing the original 57 requirements first.
 
 ---
-*Research summary for: CogSpeed -- adaptive cognitive speed training web app*
+*Research summary for: Cognify -- adaptive cognitive speed training web app*
 *Updated: 2026-03-21 with cross-analysis of original vs alternative proposal*

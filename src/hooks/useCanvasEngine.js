@@ -17,8 +17,7 @@ import { createFrameLoop } from '../engine/frameLoop.js';
 import { setupCanvasDPI, calculateAspectRatio } from '../engine/canvasScaler.js';
 import { detectRefreshRate } from '../engine/refreshRateDetector.js';
 import { createVisibilityManager } from '../engine/visibilityManager.js';
-import { clearCanvas, drawFixation, drawCentralStimulus, drawPatternMask, drawPeripheralTarget, drawPeripheralMarkers, TIMING, msToFrames } from '../engine/stimulusRenderer.js';
-import { SHAPE_IDS } from '../engine/shapePaths.js';
+import { clearCanvas } from '../engine/stimulusRenderer.js';
 
 /**
  * Wires all engine modules to a canvas element via React lifecycle.
@@ -112,13 +111,10 @@ export function useCanvasEngine(canvasRef) {
      * CANV-05: Resize recalculates and re-applies DPI without restarting the frame loop.
      */
     function applyDimensions(canvas, ctx, containerWidth, containerHeight) {
-      const { width, height, isBelowMinimum: belowMin } = calculateAspectRatio(
-        containerWidth,
-        containerHeight,
-        4 / 3,
-        600,
-        450,
-      );
+      // Mobile native optimization: use full container dimensions instead of constrained 4:3
+      const width = containerWidth;
+      const height = containerHeight;
+      const belowMin = false; // Warnings permanently disabled
 
       // Apply CSS dimensions
       canvas.style.width = `${width}px`;
@@ -149,46 +145,14 @@ export function useCanvasEngine(canvasRef) {
       const h = engineData.current.canvasHeight;
       const hz = engineData.current.hz || 60;
 
-      // Clear canvas with navy background
+      // Clear canvas with cream background
       clearCanvas(ctx, w, h);
 
       // Delegate to external render callback if set (training mode)
       if (renderRef.current) {
         renderRef.current(ctx, w, h, hz);
-      } else {
-        // --- Stimulus demo rendering ---
-        // Cycle mode: rotate through fixation → shape → mask every few seconds
-        const fixFrames = msToFrames(TIMING.FIXATION_MS, hz);
-        const stimFrames = msToFrames(200, hz); // show shape for 200ms
-        const maskFrames = msToFrames(TIMING.MASK_MS, hz);
-        const cycleLen = fixFrames + stimFrames + maskFrames + msToFrames(300, hz); // + gap
-        const phase = frameCount % cycleLen;
-        const shapeIdx = Math.floor(frameCount / cycleLen) % SHAPE_IDS.length;
-
-        if (phase < fixFrames) {
-          drawFixation(ctx, w, h);
-        } else if (phase < fixFrames + stimFrames) {
-          drawCentralStimulus(ctx, SHAPE_IDS[shapeIdx], w, h);
-          drawPeripheralTarget(ctx, shapeIdx % 8, w, h);
-        } else if (phase < fixFrames + stimFrames + maskFrames) {
-          drawPatternMask(ctx, w, h, frameCount);
-        }
-
-        // Draw subtle frame counter
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-        ctx.font = '14px monospace';
-        ctx.textAlign = 'right';
-        ctx.textBaseline = 'bottom';
-        ctx.fillText(`frame ${frameCount}`, w - 12, h - 12);
-
-        if (phase >= fixFrames && phase < fixFrames + stimFrames) {
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-          ctx.font = '12px monospace';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'top';
-          ctx.fillText(SHAPE_IDS[shapeIdx], Math.round(w / 2), Math.round(h * 0.7));
-        }
       }
+      // When idle, clearCanvas already filled the cream background — no demo rendering
 
       // Track FPS via rolling deltas
       const deltas = fpsDeltas.current;

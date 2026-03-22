@@ -118,8 +118,8 @@ ctx.scale(dpr, dpr);
 **Prevention:** Gate behind a specific localStorage flag or URL parameter that is not discoverable by normal users. Do not use a visible UI toggle in production.
 
 ### Pitfall 5: Applying External Normative Data to an Incompatible Test
-**What goes wrong:** Using NIH Toolbox or Cam-CAN percentile tables to rank CogSpeed users. The NIH Toolbox Pattern Comparison test measures same/different pattern matching; CogSpeed measures shape identification under time pressure. These are different cognitive tasks with different score distributions. A user's CogSpeed threshold does not map to NIH Toolbox percentiles.
-**Prevention:** Do not present percentile rankings from external normative datasets. If percentile context is desired, either (a) use CogSpeed's own normative data collected from consenting users, or (b) show only rough age-bracket reference ranges with clear disclaimers about approximate comparability.
+**What goes wrong:** Using NIH Toolbox or Cam-CAN percentile tables to rank Cognify users. The NIH Toolbox Pattern Comparison test measures same/different pattern matching; Cognify measures shape identification under time pressure. These are different cognitive tasks with different score distributions. A user's Cognify threshold does not map to NIH Toolbox percentiles.
+**Prevention:** Do not present percentile rankings from external normative datasets. If percentile context is desired, either (a) use Cognify's own normative data collected from consenting users, or (b) show only rough age-bracket reference ranges with clear disclaimers about approximate comparability.
 
 ## Phase-Specific Warnings
 
@@ -148,6 +148,6 @@ ctx.scale(dpr, dpr);
 - [NIH Toolbox Normative Data](https://pmc.ncbi.nlm.nih.gov/articles/PMC4542749/) -- why external norms do not apply (HIGH confidence)
 
 ---
-*Domain pitfalls for: CogSpeed -- adaptive cognitive speed training web app*
+*Domain pitfalls for: Cognify -- adaptive cognitive speed training web app*
 *Researched: 2026-03-21*
 *Updated: 2026-03-21 -- added Safari ITP eviction, DataService abstraction, premature backend, normative data pitfalls*

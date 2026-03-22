@@ -6,14 +6,16 @@
  *
  * SESS-01: State machine (PRE_SESSION → RUNNING → INTER_BLOCK → POST_SESSION)
  * SESS-02: Pre-session target display
- * SESS-03: 30 trials per block
- * SESS-04: 2 blocks per session
+ * SESS-03: Configurable trials per block via EXERCISE_CONFIG
+ * SESS-04: Configurable blocks per session via SESSION_MODES
  * SESS-05: 15-second rest between blocks
  * SESS-07: Post-session summary
  * SESS-08: Per-session data recording
  *
  * @module engine/sessionManager
  */
+
+import { EXERCISE_CONFIG, SESSION_MODES } from './gameConfig.js';
 
 export const SESSION_STATE = {
   PRE_SESSION: 'PRE_SESSION',
@@ -22,8 +24,6 @@ export const SESSION_STATE = {
   POST_SESSION: 'POST_SESSION',
 };
 
-const TRIALS_PER_BLOCK = 30;
-const TOTAL_BLOCKS = 2;
 const REST_MS = 15000;
 const PRE_SESSION_MS = 3000;
 
@@ -33,18 +33,26 @@ const PRE_SESSION_MS = 3000;
  * @param {object} config
  * @param {string} config.targetShape - Shape A for this session
  * @param {string} config.alternativeShape - Shape B for this session
+ * @param {number} [config.exerciseType=1] - Exercise type (1, 2, or 3) for trial count lookup
+ * @param {string} [config.sessionMode='full'] - Session mode ('mini' or 'full') for block count
+ * @param {number} [config.trialsPerBlock] - Explicit override (takes precedence over exerciseType)
+ * @param {number} [config.totalBlocks] - Explicit override (takes precedence over sessionMode)
  * @returns {object} Mutable session state
  */
-export function createSession({ targetShape, alternativeShape }) {
+export function createSession({ targetShape, alternativeShape, exerciseType = 1, sessionMode = 'full', trialsPerBlock, totalBlocks }) {
+  const exerciseCfg = EXERCISE_CONFIG[exerciseType] || EXERCISE_CONFIG[1];
+  const modeCfg = SESSION_MODES[sessionMode] || SESSION_MODES.full;
+
   return {
     state: SESSION_STATE.PRE_SESSION,
     targetShape,
     alternativeShape,
+    exerciseType,
 
     currentBlock: 0,
     currentTrial: 0,
-    trialsPerBlock: TRIALS_PER_BLOCK,
-    totalBlocks: TOTAL_BLOCKS,
+    trialsPerBlock: trialsPerBlock || exerciseCfg.trialsPerBlock,
+    totalBlocks: totalBlocks || modeCfg.blocks,
 
     preSessionMs: PRE_SESSION_MS,
     restMs: REST_MS,

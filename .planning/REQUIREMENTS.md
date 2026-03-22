@@ -1,4 +1,4 @@
-# Requirements: CogSpeed
+# Requirements: Cognify
 
 **Defined:** 2026-03-21
 **Core Value:** Frame-accurate adaptive stimulus presentation that faithfully implements the ACTIVE study's speed-of-processing protocol
@@ -79,8 +79,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Data Persistence
 
-- [ ] **DATA-01**: User profile stored in localStorage under cogspeed_profile (hasOnboarded, baselineThreshold, exercise2Unlocked, totalSessions)
-- [ ] **DATA-02**: All session data stored in localStorage under cogspeed_sessions (array of session objects)
+- [ ] **DATA-01**: User profile stored in localStorage under cognify_profile (hasOnboarded, baselineThreshold, exercise2Unlocked, totalSessions)
+- [ ] **DATA-02**: All session data stored in localStorage under cognify_sessions (array of session objects)
 - [ ] **DATA-03**: Data loads on app mount and saves after each session completes
 - [ ] **DATA-04**: All localStorage reads wrapped in try-catch with validation and fallback defaults
 - [ ] **DATA-05**: Schema version field in stored data for future migration support

@@ -1,6 +1,6 @@
 # Comparison: Clinical Validity & Calibration Approaches
 
-**Context:** Two competing approaches to timing calibration and clinical rigor in CogSpeed
+**Context:** Two competing approaches to timing calibration and clinical rigor in Cognify
 **Recommendation:** Adopt frame-unit staircase and passive dropped-frame logging from the alternative; reject mandatory pre-session calibration, input latency measurement, and session discard as over-engineering
 **Researched:** 2026-03-21
 
@@ -165,7 +165,7 @@ Add the delta check to the rAF loop from day 1. It is trivial to implement and c
 
 ---
 
-## Question 4: Input latency measurement -- relevant for CogSpeed?
+## Question 4: Input latency measurement -- relevant for Cognify?
 
 **Verdict: NO. Not relevant. Do not build it.**
 
@@ -173,17 +173,17 @@ Add the delta check to the rAF loop from day 1. It is trivial to implement and c
 
 The idea is to measure the delay between a user's physical input (tap/click) and when JavaScript registers the event. This matters in reaction-time experiments where absolute RT accuracy is the primary dependent variable.
 
-### Why it does not matter for CogSpeed
+### Why it does not matter for Cognify
 
 The critical fact is in the project spec (TRAL-03): "Reaction time clock starts when response prompt appears (after mask), not at stimulus onset."
 
-CogSpeed is a **stimulus detection threshold** experiment, not a reaction time experiment. The dependent variable is the display duration at which the user can still identify the stimulus -- measured in frames, controlled by the staircase. The staircase algorithm's input is binary: correct or incorrect. It does not use reaction time at all.
+Cognify is a **stimulus detection threshold** experiment, not a reaction time experiment. The dependent variable is the display duration at which the user can still identify the stimulus -- measured in frames, controlled by the staircase. The staircase algorithm's input is binary: correct or incorrect. It does not use reaction time at all.
 
 Reaction time IS recorded as metadata, but:
 1. RT does not feed the staircase
 2. Input latency creates a constant offset (10-40ms per jsPsych documentation) that is identical across trials on the same device
-3. CogSpeed does not compare RT values across different devices
-4. For within-subject comparisons (which is all CogSpeed does), constant offsets cancel out
+3. Cognify does not compare RT values across different devices
+4. For within-subject comparisons (which is all Cognify does), constant offsets cancel out
 
 ### What jsPsych says
 
@@ -191,9 +191,9 @@ jsPsych's timing accuracy documentation states that response times in browser-ba
 
 ### Recommendation
 
-Do not build it. The alternative is solving a problem that CogSpeed does not have. If reaction time were the dependent variable (as in a simple RT task), input latency compensation would matter. For a threshold estimation task with binary correct/incorrect input, it is irrelevant.
+Do not build it. The alternative is solving a problem that Cognify does not have. If reaction time were the dependent variable (as in a simple RT task), input latency compensation would matter. For a threshold estimation task with binary correct/incorrect input, it is irrelevant.
 
-**Confidence: HIGH** -- jsPsych documentation and the timing mega-study both confirm that input latency offsets are constant and irrelevant for within-subject designs. CogSpeed's staircase is binary, not RT-dependent.
+**Confidence: HIGH** -- jsPsych documentation and the timing mega-study both confirm that input latency offsets are constant and irrelevant for within-subject designs. Cognify's staircase is binary, not RT-dependent.
 
 ---
 
@@ -280,7 +280,7 @@ From the UFOV technical properties documentation (the most revealing source):
 - NO session discard based on hardware capability
 - NO explicit device calibration step
 
-### What this means for CogSpeed
+### What this means for Cognify
 
 BrainHQ proves that **standard web tech + frame-unit timing + per-trial tolerance checking** is sufficient for clinical-grade cognitive training validated by 140+ peer-reviewed papers. Their approach is:
 
@@ -323,7 +323,7 @@ BrainHQ has achieved clinical validation using an approach that is closer to the
 | Element | Why reject |
 |---------|-----------|
 | Mandatory pre-session calibration UI | BrainHQ does not do this. Bad UX. Startup detection is sufficient. |
-| Input latency measurement | CogSpeed staircase is binary correct/incorrect. RT is metadata, not the dependent variable. Irrelevant. |
+| Input latency measurement | Cognify staircase is binary correct/incorrect. RT is metadata, not the dependent variable. Irrelevant. |
 | Session discard on bad hardware | Too aggressive. BrainHQ warns, does not discard. The staircase self-corrects over many trials. |
 
 ### Keep from the original (4 elements)
@@ -383,5 +383,5 @@ The following requirements should be updated:
 - [MDN requestAnimationFrame](https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame) -- timestamp parameter, vsync alignment
 
 ---
-*Clinical validity and calibration comparison for: CogSpeed*
+*Clinical validity and calibration comparison for: Cognify*
 *Researched: 2026-03-21*

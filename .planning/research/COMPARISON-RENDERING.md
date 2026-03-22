@@ -1,6 +1,6 @@
-# Comparison: Rendering & Timing Stack Proposals for CogSpeed
+# Comparison: Rendering & Timing Stack Proposals for Cognify
 
-**Context:** Cross-analysis of two competing approaches to the frame-accurate rendering and timing engine for CogSpeed -- a psychophysics-grade cognitive speed training app where stimulus display timing IS the product.
+**Context:** Cross-analysis of two competing approaches to the frame-accurate rendering and timing engine for Cognify -- a psychophysics-grade cognitive speed training app where stimulus display timing IS the product.
 **Researched:** 2026-03-21
 **Recommendation:** Stay with React 19 + useRef isolation. Adopt performance.now() delta timing as a *companion* to frame counting (not a replacement). Adopt integer coordinate rounding. Skip offscreen canvas pre-rendering. Reserve full-screen canvas takeover as an optimization-if-needed.
 
@@ -94,7 +94,7 @@ This 1-5ms difference occurs **between trials** (when the user taps a response b
 
 ### Svelte's Advantage is Real but Misplaced
 
-Svelte genuinely produces smaller bundles (~6.8KB vs ~40KB for React+ReactDOM compressed), uses ~20% less memory, and renders DOM updates 3-7x faster in synthetic benchmarks. These are real advantages -- for apps where DOM manipulation frequency is the bottleneck. CogSpeed's bottleneck is not DOM manipulation. It is canvas frame timing. Svelte's compiler cannot optimize `ctx.arc()` or `requestAnimationFrame()` -- those are browser-native APIs that execute identically regardless of framework.
+Svelte genuinely produces smaller bundles (~6.8KB vs ~40KB for React+ReactDOM compressed), uses ~20% less memory, and renders DOM updates 3-7x faster in synthetic benchmarks. These are real advantages -- for apps where DOM manipulation frequency is the bottleneck. Cognify's bottleneck is not DOM manipulation. It is canvas frame timing. Svelte's compiler cannot optimize `ctx.arc()` or `requestAnimationFrame()` -- those are browser-native APIs that execute identically regardless of framework.
 
 ### Preact's rAF Timing Quirk
 
@@ -106,9 +106,9 @@ There is an open issue (preactjs/preact#4826) documenting that Preact's requestA
 
 ## Question 3: Is Offscreen Canvas Pre-Rendering Worth It?
 
-**Verdict: No, not for CogSpeed. The shapes are too simple and too few for pre-rendering to provide meaningful benefit. It adds complexity with no measurable gain.**
+**Verdict: No, not for Cognify. The shapes are too simple and too few for pre-rendering to provide meaningful benefit. It adds complexity with no measurable gain.**
 
-### CogSpeed's Rendering Workload Per Frame
+### Cognify's Rendering Workload Per Frame
 
 During stimulus presentation, the canvas draws:
 
@@ -127,7 +127,7 @@ But `drawImage()` itself is not free. It involves:
 2. Pixel data transfer between canvas buffers
 3. Destination compositing
 
-For a single 80x80px shape, `drawImage()` from an offscreen canvas and `beginPath() + arc() + fill()` are comparable in cost. The break-even point is roughly **50-100 path operations per shape** (complex SVG-like drawings, text rendering, gradient fills). CogSpeed's shapes use 3-8 path operations each -- well below the threshold where pre-rendering pays off.
+For a single 80x80px shape, `drawImage()` from an offscreen canvas and `beginPath() + arc() + fill()` are comparable in cost. The break-even point is roughly **50-100 path operations per shape** (complex SVG-like drawings, text rendering, gradient fills). Cognify's shapes use 3-8 path operations each -- well below the threshold where pre-rendering pays off.
 
 ### The Complexity Cost
 
@@ -155,7 +155,7 @@ The alternative proposal's suggestion to round coordinates to integers IS worth 
 
 This is a zero-cost, zero-complexity optimization that improves both performance AND stimulus clarity. Adopt it unconditionally.
 
-**Confidence: HIGH for the recommendation to skip pre-rendering. MDN and web.dev documentation align.** MEDIUM for the exact performance numbers (these are estimates from documentation, not measured in CogSpeed specifically).
+**Confidence: HIGH for the recommendation to skip pre-rendering. MDN and web.dev documentation align.** MEDIUM for the exact performance numbers (these are estimates from documentation, not measured in Cognify specifically).
 
 ---
 
@@ -177,7 +177,7 @@ The jspsych-psychophysics plugin explicitly recommends specifying presentation t
 
 Delta timing (measuring `performance.now()` difference between rAF callbacks) serves critical purposes that pure frame counting cannot:
 
-1. **Refresh rate detection.** There is no Web API to query display refresh rate (confirmed by WHATWG HTML issue #8031). Measuring rAF callback deltas over ~60 frames is the standard approach to determine `msPerFrame`. CogSpeed already plans to do this (CANV-06).
+1. **Refresh rate detection.** There is no Web API to query display refresh rate (confirmed by WHATWG HTML issue #8031). Measuring rAF callback deltas over ~60 frames is the standard approach to determine `msPerFrame`. Cognify already plans to do this (CANV-06).
 
 2. **Dropped frame detection.** If `deltaTime > 1.5 * expectedFrameTime`, a frame was dropped. The frame counter still incremented once (one rAF callback), but the stimulus was visible for 2 physical frames. Without delta timing, you would not know the trial's timing was corrupted. With it, you can flag the trial.
 
@@ -317,7 +317,7 @@ The alternative proposal suggests unmounting all React UI during exercises, leav
 - Simpler mental model: "canvas mode" vs "UI mode"
 - Maximum GPU/CPU budget for canvas rendering
 
-### Why It Does Not Work for CogSpeed
+### Why It Does Not Work for Cognify
 
 1. **Response buttons must appear immediately after the mask phase.** The trial sequence is: fixation -> stimulus -> mask -> **response prompt** -> user response. The response prompt is React UI (buttons showing shapes, or an 8-position picker for Exercise 2). If you unmounted all React UI, you now need to remount it within the same rAF frame that ends the mask phase. React's mount lifecycle is not instant -- it involves component creation, effect scheduling, and DOM insertion. This introduces 5-50ms of latency between mask offset and response availability, which corrupts reaction time measurements.
 
@@ -349,7 +349,7 @@ Keep React UI mounted but inert during stimulus phases. Disable interactions via
 
 2. **Full-screen canvas takeover (unmount all UI).** React.memo + useRef already achieves zero reconciliation overhead during stimulus presentation. Unmounting UI means remounting it for response capture, introducing latency at the worst possible moment (reaction time measurement onset).
 
-3. **Offscreen canvas pre-rendering for geometric shapes.** CogSpeed draws 1-3 shapes per frame with 3-8 path operations each. The rendering budget consumed is approximately 0.1-0.3ms out of a 16.67ms frame. Pre-rendering adds complexity (offscreen canvas management, DPI scaling, resize invalidation, cache lifecycle) for zero measurable benefit.
+3. **Offscreen canvas pre-rendering for geometric shapes.** Cognify draws 1-3 shapes per frame with 3-8 path operations each. The rendering budget consumed is approximately 0.1-0.3ms out of a 16.67ms frame. Pre-rendering adds complexity (offscreen canvas management, DPI scaling, resize invalidation, cache lifecycle) for zero measurable benefit.
 
 ### The Architecture That Ships
 
@@ -428,5 +428,5 @@ Canvas coordinates at non-integer values force anti-aliasing interpolation, prod
 - [Kirupa: Consistent Animation Speeds](https://www.kirupa.com/animations/ensuring_consistent_animation_speeds.htm) -- delta time approach (MEDIUM confidence)
 
 ---
-*Rendering and timing stack comparison for: CogSpeed -- adaptive cognitive speed training web app*
+*Rendering and timing stack comparison for: Cognify -- adaptive cognitive speed training web app*
 *Researched: 2026-03-21*

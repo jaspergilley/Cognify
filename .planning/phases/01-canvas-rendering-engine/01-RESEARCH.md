@@ -93,8 +93,8 @@ None -- discussion stayed within phase scope
 # No additional packages needed for Phase 1
 # All APIs are browser-native
 # React and Tailwind are already project dependencies
-npx create-vite@latest cogspeed -- --template react
-cd cogspeed
+npx create-vite@latest cognify -- --template react
+cd cognify
 npm install
 npm install -D tailwindcss @tailwindcss/vite
 ```

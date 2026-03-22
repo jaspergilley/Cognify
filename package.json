@@ -1,5 +1,5 @@
 {
-  "name": "cogspeed",
+  "name": "cognify",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -9,12 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.99.3",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "recharts": "^3.8.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",
     "@vitejs/plugin-react": "^6.0.1",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4.2.2",
     "vite": "^8.0.1"
   }

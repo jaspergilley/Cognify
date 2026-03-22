@@ -1,6 +1,6 @@
 # Comparison: Data Architecture -- localStorage-Only vs Supabase-From-Day-One
 
-**Context:** Data architecture and backend strategy for CogSpeed hackathon MVP
+**Context:** Data architecture and backend strategy for Cognify hackathon MVP
 **Recommendation:** Ship localStorage tonight behind a DataService abstraction. Add Supabase on ca-central-1 in a dedicated v1.1 milestone within the first week. The alternative is strategically correct but tactically wrong for tonight.
 **Researched:** 2026-03-21
 **Confidence:** HIGH
@@ -82,13 +82,13 @@ localStorage in private browsing is isolated and cleared when the session ends. 
 
 ### Question 3: Is the "Sync Tax" Argument Valid?
 
-**Verdict: Partially valid, but overstated for CogSpeed's specific data model.**
+**Verdict: Partially valid, but overstated for Cognify's specific data model.**
 
 The sync tax argument: "Building offline-first with localStorage then adding a backend later is harder than starting with the backend because you must retrofit sync, handle migration, and manage dual storage."
 
 This is true in the general case. Offline-first sync is genuinely hard -- conflict resolution, ordering guarantees, partial failure handling, migration of existing client-only users. The Hacker News thread "I still haven't found the holy grail architecture for offline-first" confirms this is an unsolved problem in the general case.
 
-**But CogSpeed has four unusual properties that make sync dramatically simpler than the general case:**
+**But Cognify has four unusual properties that make sync dramatically simpler than the general case:**
 
 1. **Append-only data model.** Sessions are never edited after completion. Trials are never modified. There is no conflict resolution problem -- you only INSERT, never UPDATE. Two devices cannot produce conflicting writes to the same record.
 
@@ -101,7 +101,7 @@ This is true in the general case. Offline-first sync is genuinely hard -- confli
 These properties reduce the "sync tax" to approximately:
 
 ```javascript
-// The entire sync layer for CogSpeed (~30 lines)
+// The entire sync layer for Cognify (~30 lines)
 async function syncSession(session) {
   const { error } = await supabase
     .from('sessions')
@@ -119,7 +119,7 @@ async function syncPendingSessions() {
 }
 ```
 
-This is not the nightmarish sync engine that offline-first literature warns about. CogSpeed's data model is append-only and session-batched -- the two properties that make sync trivial.
+This is not the nightmarish sync engine that offline-first literature warns about. Cognify's data model is append-only and session-batched -- the two properties that make sync trivial.
 
 **The sync tax is real but costs approximately 2 hours of engineering when you add Supabase later. It does not justify adding 4+ hours of scope tonight.**
 
@@ -131,7 +131,7 @@ This is not the nightmarish sync engine that offline-first literature warns abou
 
 The Canadian privacy regulatory landscape:
 
-| Law | Scope | Triggered By CogSpeed? |
+| Law | Scope | Triggered By Cognify? |
 |-----|-------|------------------------|
 | **PIPEDA** (federal) | Private-sector collection of personal info in commercial activities | NOT TONIGHT -- no data leaves device. YES when accounts are added -- email + cognitive performance = personal information |
 | **FIPPA** (Ontario) | Public bodies (universities, government) | Only if operated by a public institution |
@@ -157,8 +157,8 @@ The Canadian privacy regulatory landscape:
 
 Normative data (Cam-CAN, NIH Toolbox) would enable percentile rankings: "Your processing speed of 120ms is faster than 85% of people your age." This sounds compelling, but there are serious problems:
 
-**Problem 1: CogSpeed does not measure the same construct as NIH Toolbox.**
-The NIH Toolbox Pattern Comparison Processing Speed Test uses a same/different pattern-matching paradigm. CogSpeed uses a shape-identification paradigm derived from UFOV/Double Decision. The scores are not directly comparable. Showing "85th percentile based on NIH Toolbox norms" for a fundamentally different test would be scientifically misleading. The NIH Toolbox normative sample (4,859 participants ages 3-85) is calibrated to their specific task, not yours.
+**Problem 1: Cognify does not measure the same construct as NIH Toolbox.**
+The NIH Toolbox Pattern Comparison Processing Speed Test uses a same/different pattern-matching paradigm. Cognify uses a shape-identification paradigm derived from UFOV/Double Decision. The scores are not directly comparable. Showing "85th percentile based on NIH Toolbox norms" for a fundamentally different test would be scientifically misleading. The NIH Toolbox normative sample (4,859 participants ages 3-85) is calibrated to their specific task, not yours.
 
 **Problem 2: Normative data requires demographic input.**
 Percentile lookup requires age at minimum, and ideally education level and demographic factors. The current MVP has no user profile beyond training state. Adding age collection means forms, validation, and storing demographic data (increasing privacy obligations).
@@ -169,7 +169,7 @@ Percentile lookup requires age at minimum, and ideally education level and demog
 **Problem 4: Building valid normative tables requires statistical work.**
 You cannot simply copy a table from a published paper and present it as your app's norms. The scoring methodology, task parameters, display characteristics, and participant demographics all differ.
 
-**Recommendation:** Defer normative data to v2+. When implemented, use CogSpeed's own collected data from consenting users to build norms. In the interim, hardcoded age-bracket reference ranges (e.g., "typical range for 60-70 year-olds: 150-250ms based on published UFOV thresholds") can provide rough context without false precision.
+**Recommendation:** Defer normative data to v2+. When implemented, use Cognify's own collected data from consenting users to build norms. In the interim, hardcoded age-bracket reference ranges (e.g., "typical range for 60-70 year-olds: 150-250ms based on published UFOV thresholds") can provide rough context without false precision.
 
 ---
 
@@ -199,8 +199,8 @@ The architecture:
           v                     v
 +--------------------+  +---------------------+
 | LocalStorageAdapter|  | SupabaseAdapter     |
-| cogspeed_profile   |  | Writes to Supabase  |
-| cogspeed_sessions  |  | Falls back to local |
+| cognify_profile   |  | Writes to Supabase  |
+| cognify_sessions  |  | Falls back to local |
 +--------------------+  | Migrates old data   |
                         +---------------------+
 ```
@@ -218,8 +218,8 @@ The architecture:
 ```javascript
 // dataService.js -- the 15-minute investment that saves hours later
 const STORAGE_VERSION = 1;
-const PROFILE_KEY = 'cogspeed_profile';
-const SESSIONS_KEY = 'cogspeed_sessions';
+const PROFILE_KEY = 'cognify_profile';
+const SESSIONS_KEY = 'cognify_sessions';
 
 const DEFAULT_PROFILE = {
   _version: STORAGE_VERSION,
@@ -365,5 +365,5 @@ The original plan's constraints should be read as "v1 scope boundaries" not as "
 - [RxDB-Supabase Offline Support](https://github.com/marceljuenemann/rxdb-supabase) -- community library for offline Supabase (LOW confidence -- third-party)
 
 ---
-*Data architecture comparison for: CogSpeed -- localStorage vs Supabase backend strategy*
+*Data architecture comparison for: Cognify -- localStorage vs Supabase backend strategy*
 *Researched: 2026-03-21*

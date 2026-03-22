@@ -228,5 +228,5 @@ The "Comprehensive" depth setting should be changed to "rapid" or "minimal" for 
 - Alternative proposal features as described in user prompt
 
 ---
-*Cross-analysis for: CogSpeed -- Original Plan vs Alternative Proposal*
+*Cross-analysis for: Cognify -- Original Plan vs Alternative Proposal*
 *Analyzed: 2026-03-21*

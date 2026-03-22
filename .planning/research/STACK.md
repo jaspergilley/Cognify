@@ -42,7 +42,7 @@
 
 ```bash
 # Scaffold project
-npm create vite@latest cogspeed -- --template react
+npm create vite@latest cognify -- --template react
 
 # Core dependencies
 npm install react react-dom recharts
@@ -101,14 +101,14 @@ import 'vitest-canvas-mock';
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| Vite 8 | Next.js | Only if you need SSR/SSG. CogSpeed is a pure client-side SPA with no backend -- Next.js adds unnecessary server complexity. |
+| Vite 8 | Next.js | Only if you need SSR/SSG. Cognify is a pure client-side SPA with no backend -- Next.js adds unnecessary server complexity. |
 | Vite 8 | Create React App (CRA) | Never. CRA is unmaintained (last meaningful update was 2022). React team officially recommends frameworks or Vite. |
 | Vite 8 | Webpack | Only in legacy codebases. Vite is faster in dev (native ESM) and prod (Rolldown). Webpack requires extensive config. |
 | Tailwind CSS v4 | CSS Modules | If you philosophically oppose utility-first CSS. But project spec mandates Tailwind, and v4's CSS-first config eliminates the JS config overhead. |
 | Recharts | Victory / Nivo | Recharts is simpler and spec-mandated. Victory offers more customization. Nivo is heavier but beautiful. For progress charts this simple, Recharts is ideal. |
 | Vitest | Jest 30 | If you are not using Vite. Vitest shares Vite's transform pipeline -- zero extra config for JSX/ESM. Jest requires separate Babel/SWC setup. |
 | jsdom | happy-dom | If you need faster tests and don't use canvas. happy-dom is 3-10x faster but has gaps in browser API coverage and no canvas mock ecosystem. |
-| localStorage (raw) | Zustand persist middleware | If state management becomes complex enough to warrant a store. For CogSpeed's two storage keys (`cogspeed_profile`, `cogspeed_sessions`), a thin custom hook is simpler and has zero dependencies. |
+| localStorage (raw) | Zustand persist middleware | If state management becomes complex enough to warrant a store. For Cognify's two storage keys (`cognify_profile`, `cognify_sessions`), a thin custom hook is simpler and has zero dependencies. |
 
 ## What NOT to Use
 
@@ -117,8 +117,8 @@ import 'vitest-canvas-mock';
 | Create React App | Unmaintained since ~2022. Slow dev server (Webpack). React team no longer recommends it. | Vite 8 with `react` template |
 | setTimeout/setInterval for stimulus timing | Cannot guarantee vsync alignment. Timing jitter of 4-16ms makes frame-accurate display impossible. This is the single most important constraint in the project. | requestAnimationFrame with frame counting |
 | DOM elements for stimulus display | DOM layout/paint cycle introduces variable delays. Cannot guarantee single-frame display at 60fps. | HTML5 Canvas with direct 2D context drawing |
-| Pixi.js / Three.js / Konva | Massive overkill for 2D shape drawing. Adds 100KB-500KB for functionality you won't use. WebGL context adds complexity. CogSpeed draws circles, squares, and triangles -- native Canvas 2D path operations handle this trivially. | Native Canvas 2D API (`ctx.beginPath()`, `ctx.arc()`, `ctx.fill()`) |
-| Howler.js / Tone.js for sound | Audio file dependencies and library overhead for what amounts to 3 simple tones. CogSpeed needs ~200ms sine wave beeps, not a music production toolkit. | Native Web Audio API with OscillatorNode + GainNode |
+| Pixi.js / Three.js / Konva | Massive overkill for 2D shape drawing. Adds 100KB-500KB for functionality you won't use. WebGL context adds complexity. Cognify draws circles, squares, and triangles -- native Canvas 2D path operations handle this trivially. | Native Canvas 2D API (`ctx.beginPath()`, `ctx.arc()`, `ctx.fill()`) |
+| Howler.js / Tone.js for sound | Audio file dependencies and library overhead for what amounts to 3 simple tones. Cognify needs ~200ms sine wave beeps, not a music production toolkit. | Native Web Audio API with OscillatorNode + GainNode |
 | React state for animation loop data | Re-renders on every frame (60fps) would destroy performance. React's reconciliation cycle adds unpredictable latency to frame timing. | useRef for mutable animation state (frame count, timing, canvas ref) |
 | Zustand / Redux / Jotai | Over-engineering for an app with 2 localStorage keys and simple component tree. Adds dependencies and patterns that don't earn their complexity. | Custom `usePersistedState` hook wrapping useState + useEffect + localStorage |
 | TypeScript | Project spec mandates `.jsx` files. TypeScript would add compile step overhead and configuration complexity for a hackathon MVP. Can be migrated later. | Plain JavaScript with JSX |
@@ -143,7 +143,7 @@ import 'vitest-canvas-mock';
 - Use `setValueAtTime()` / `linearRampToValueAtTime()` for precise scheduling
 
 **For data persistence:**
-- Serialize to JSON, store under namespaced keys (`cogspeed_profile`, `cogspeed_sessions`)
+- Serialize to JSON, store under namespaced keys (`cognify_profile`, `cognify_sessions`)
 - Always wrap `JSON.parse` in try-catch (corrupt data must not crash the app)
 - Debounce writes if updating frequently (localStorage is synchronous and blocks the main thread)
 - Include a schema version field for future migration support
@@ -182,5 +182,5 @@ import 'vitest-canvas-mock';
 - [jsdom canvas threading issues](https://xebia.com/blog/how-to-solve-canvas-crash-in-vitest-with-threads-and-jsdom/) -- jsdom vs happy-dom for canvas (MEDIUM confidence)
 
 ---
-*Stack research for: CogSpeed -- adaptive cognitive speed training web app*
+*Stack research for: Cognify -- adaptive cognitive speed training web app*
 *Researched: 2026-03-21*
