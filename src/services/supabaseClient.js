@@ -28,7 +28,14 @@ export async function signInWithEmail(email, password) {
 }
 
 export async function signUpWithEmail(email, password) {
-  return supabase.auth.signUp({ email, password });
+  return supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      // Skip email verification — synthetic emails (username@cognify.app) can't receive mail
+      emailRedirectTo: undefined,
+    },
+  });
 }
 
 export async function signOut() {

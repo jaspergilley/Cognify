@@ -1,8 +1,9 @@
 /**
  * Login Screen
  *
- * Email + password authentication UI with password
- * strength validation on signup.
+ * Username + password authentication UI matching the
+ * khush+enrique branch flow. Username is converted to
+ * a synthetic email for Supabase auth internally.
  *
  * @module components/auth/LoginScreen
  */
@@ -11,70 +12,79 @@ import { useState } from 'react';
 import { signInWithEmail, signUpWithEmail } from '../../services/supabaseClient.js';
 import { useTranslation } from '../../i18n/index.jsx';
 
-function validatePassword(pw) {
-  if (pw.length < 8) return 'Password must be at least 8 characters';
-  if (!/[A-Z]/.test(pw)) return 'Password must include an uppercase letter';
-  if (!/[a-z]/.test(pw)) return 'Password must include a lowercase letter';
-  if (!/[0-9]/.test(pw)) return 'Password must include a number';
-  return null;
-}
-
-function getPasswordStrength(pw) {
-  let score = 0;
-  if (pw.length >= 8) score++;
-  if (pw.length >= 12) score++;
-  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
-  if (/[0-9]/.test(pw)) score++;
-  if (/[^A-Za-z0-9]/.test(pw)) score++;
-  if (score <= 1) return { label: 'Weak', color: 'bg-error', percent: 20 };
-  if (score <= 3) return { label: 'Fair', color: 'bg-warning', percent: 60 };
-  return { label: 'Strong', color: 'bg-primary', percent: 100 };
+/** Convert username to synthetic email for Supabase auth. */
+function toEmail(username) {
+  return `${username.toLowerCase().trim()}@cognify.app`;
 }
 
 export function LoginScreen() {
   const { t } = useTranslation();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  function clearForm() {
+    setError(null);
+    setUsername('');
+    setPassword('');
+    setConfirmPassword('');
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!email.trim() || !password) return;
+    if (!username.trim() || !password) {
+      setError(t('auth.error.fillAll') || 'Please fill in all fields.');
+      return;
+    }
 
-    // Client-side password validation for signup
     if (isSignUp) {
-      const pwError = validatePassword(password);
-      if (pwError) { setError(pwError); return; }
+      if (username.trim().length < 3) {
+        setError(t('auth.error.usernameLength') || 'Username must be at least 3 characters.');
+        return;
+      }
+      if (password.length < 6) {
+        setError(t('auth.error.passwordLength') || 'Password must be at least 6 characters.');
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError(t('auth.error.passwordMismatch') || 'Passwords do not match.');
+        return;
+      }
     }
 
     setLoading(true);
     setError(null);
 
+    const email = toEmail(username);
     const result = isSignUp
-      ? await signUpWithEmail(email.trim(), password)
-      : await signInWithEmail(email.trim(), password);
+      ? await signUpWithEmail(email, password)
+      : await signInWithEmail(email, password);
 
     setLoading(false);
 
     if (result.error) {
-      setError(result.error.message);
+      // Friendlier error messages
+      const msg = result.error.message;
+      if (msg.includes('Invalid login')) {
+        setError(t('auth.error.incorrectPassword') || 'Incorrect username or password.');
+      } else if (msg.includes('User already registered')) {
+        setError(t('auth.error.usernameTaken') || 'That username is already taken.');
+      } else {
+        setError(msg);
+      }
       return;
     }
 
-    // Defensive: check that a session was actually created
-    if (!result.data?.session) {
-      setError(
-        isSignUp
-          ? 'Account created. Please check your email to confirm, then sign in.'
-          : 'Sign-in failed. Please check your credentials and try again.'
-      );
-    }
     // Success: AuthContext's onAuthStateChange listener takes over
   }
 
-  const strength = getPasswordStrength(password);
+  function handleKeyDown(e) {
+    if (e.key === 'Enter') handleSubmit(e);
+  }
 
   return (
     <div className="fixed inset-0 flex justify-center bg-surface-dim">
@@ -93,6 +103,32 @@ export function LoginScreen() {
           </p>
         </div>
 
+        {/* Toggle tabs */}
+        <div className="w-full flex bg-surface-container rounded-xl p-1 gap-1 mb-6">
+          <button
+            type="button"
+            onClick={() => { setIsSignUp(false); clearForm(); }}
+            className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all duration-200
+                        ${!isSignUp
+                          ? 'bg-primary text-on-primary shadow-sm'
+                          : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+                        }`}
+          >
+            {t('auth.signIn')}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setIsSignUp(true); clearForm(); }}
+            className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all duration-200
+                        ${isSignUp
+                          ? 'bg-primary text-on-primary shadow-sm'
+                          : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+                        }`}
+          >
+            {t('auth.createAccount')}
+          </button>
+        </div>
+
         {/* Error banner */}
         {error && (
           <div className="w-full bg-error-container/30 border border-error/20 rounded-xl p-4 mb-6 flex items-start gap-3">
@@ -101,61 +137,81 @@ export function LoginScreen() {
           </div>
         )}
 
-        {/* Email + Password form */}
+        {/* Username + Password form */}
         <form onSubmit={handleSubmit} className="w-full space-y-4">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoFocus
-            className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-4
-                       font-body text-lg text-on-surface placeholder:text-on-surface-variant/50
-                       focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-          />
           <div>
+            <label className="block text-on-surface text-sm font-bold mb-2 pl-1">
+              {t('auth.username') || 'Username'}
+            </label>
             <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              type="text"
+              placeholder={isSignUp
+                ? (t('auth.placeholder.username.signup') || 'Choose a username')
+                : (t('auth.placeholder.username.login') || 'Your username')}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              onKeyDown={handleKeyDown}
               required
-              minLength={8}
+              autoFocus
+              autoComplete="username"
               className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-4
                          font-body text-lg text-on-surface placeholder:text-on-surface-variant/50
                          focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
             />
-
-            {/* Password strength indicator (signup only) */}
-            {isSignUp && password.length > 0 && (
-              <div className="mt-3 space-y-2 px-1">
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-300 ${strength.color}`}
-                      style={{ width: `${strength.percent}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-on-surface-variant font-bold w-12 text-right">{strength.label}</span>
-                </div>
-                <ul className="text-xs text-on-surface-variant space-y-0.5">
-                  <li className={password.length >= 8 ? 'text-primary' : ''}>
-                    {password.length >= 8 ? '\u2713' : '\u25CB'} At least 8 characters
-                  </li>
-                  <li className={/[A-Z]/.test(password) ? 'text-primary' : ''}>
-                    {/[A-Z]/.test(password) ? '\u2713' : '\u25CB'} Uppercase letter
-                  </li>
-                  <li className={/[a-z]/.test(password) ? 'text-primary' : ''}>
-                    {/[a-z]/.test(password) ? '\u2713' : '\u25CB'} Lowercase letter
-                  </li>
-                  <li className={/[0-9]/.test(password) ? 'text-primary' : ''}>
-                    {/[0-9]/.test(password) ? '\u2713' : '\u25CB'} Number
-                  </li>
-                </ul>
-              </div>
-            )}
           </div>
+
+          <div>
+            <label className="block text-on-surface text-sm font-bold mb-2 pl-1">
+              {t('auth.password') || 'Password'}
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder={isSignUp
+                  ? (t('auth.placeholder.password.signup') || 'Create a password')
+                  : (t('auth.placeholder.password.login') || 'Your password')}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={handleKeyDown}
+                required
+                minLength={6}
+                autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-4 pr-16
+                           font-body text-lg text-on-surface placeholder:text-on-surface-variant/50
+                           focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-primary font-bold text-sm
+                           px-2 py-1 rounded hover:bg-primary/10 transition-colors"
+              >
+                {showPassword ? (t('auth.hide') || 'Hide') : (t('auth.show') || 'Show')}
+              </button>
+            </div>
+          </div>
+
+          {/* Confirm password (signup only) */}
+          {isSignUp && (
+            <div>
+              <label className="block text-on-surface text-sm font-bold mb-2 pl-1">
+                {t('auth.confirmPassword') || 'Confirm Password'}
+              </label>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder={t('auth.placeholder.confirmPassword') || 'Re-enter your password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                onKeyDown={handleKeyDown}
+                required
+                minLength={6}
+                autoComplete="new-password"
+                className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-4
+                           font-body text-lg text-on-surface placeholder:text-on-surface-variant/50
+                           focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+              />
+            </div>
+          )}
 
           <button
             type="submit"
@@ -164,14 +220,9 @@ export function LoginScreen() {
                        active:scale-95 transition-transform duration-200 shadow-md
                        disabled:opacity-50"
           >
-            {loading ? (isSignUp ? t('auth.creatingAccount') : t('auth.signingIn')) : isSignUp ? t('auth.createAccount') : t('auth.signIn')}
-          </button>
-          <button
-            type="button"
-            onClick={() => { setIsSignUp(!isSignUp); setError(null); }}
-            className="w-full text-center text-primary font-bold py-2"
-          >
-            {isSignUp ? <>{t('auth.haveAccount')}{t('auth.signIn')}</> : <>{t('auth.newHere')}{t('auth.createAccount')}</>}
+            {loading
+              ? (isSignUp ? t('auth.creatingAccount') : t('auth.signingIn'))
+              : (isSignUp ? t('auth.createAccount') : t('auth.signIn'))}
           </button>
         </form>
 
