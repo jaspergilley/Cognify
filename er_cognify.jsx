@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useCallback, createContext, useContext, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
+import { useTranslation, LANGUAGES } from "./src/i18n/index.jsx";
 
 /* ═══════════════════════════════════════════════════════════
    STYLESHEET — CSS custom properties, responsive layout,
@@ -57,39 +58,6 @@ const STYLESHEET = `
   --bar-muted: #D6D5CE;
 }
 
-/* ── Dark Theme ── */
-[data-theme="dark"] {
-  --bg: #0E1210;
-  --bg-card: #1A201D;
-  --bg-card-alt: #151B18;
-  --bg-input: #1A201D;
-  --bg-hover: #222A26;
-  --text: #E6E8E4;
-  --text-secondary: #9BA69E;
-  --text-muted: #6B756D;
-  --accent: #6EE7B7;
-  --accent-hover: #5DD4A6;
-  --accent-light: rgba(110,231,183,0.07);
-  --accent-border: rgba(110,231,183,0.16);
-  --accent-glow: rgba(110,231,183,0.12);
-  --gold: #FACC15;
-  --gold-light: rgba(250,204,21,0.06);
-  --gold-border: rgba(250,204,21,0.12);
-  --blue: #93C5FD;
-  --border: #2A332D;
-  --border-light: #222A26;
-  --correct: #6EE7B7;
-  --incorrect: #F87171;
-  --nav-bg: rgba(14,18,16,0.92);
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
-  --shadow-md: 0 2px 8px rgba(0,0,0,0.25);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,0.3);
-  --chart-line: #6EE7B7;
-  --chart-line-alt: #93C5FD;
-  --chart-grid: #2A332D;
-  --bar-active: #6EE7B7;
-  --bar-muted: #2A332D;
-}
 
 body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
 
@@ -255,8 +223,11 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
 }
 .btn-icon:hover { background: var(--bg-hover); }
+.settings-btn { color: var(--text); border: 1.5px solid var(--border); }
+.settings-btn:hover { color: var(--accent); border-color: var(--accent); }
 
 .btn-choice {
   display: flex; flex-direction: column; align-items: center; gap: 8px;
@@ -373,7 +344,8 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
 }
 .nav-item[data-active="true"] { color: var(--accent); }
 .nav-item:hover { color: var(--text-secondary); }
-.nav-icon { font-size: 24px; }
+.nav-icon { width: 22px; height: 22px; }
+.nav-icon svg { width: 100%; height: 100%; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .nav-label { font-size: 13px; font-weight: 600; letter-spacing: 0.5px; }
 
 /* ── Auth Toggle ── */
@@ -405,6 +377,37 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
 }
 .streak-dot[data-filled="true"] { border-color: var(--accent); background: var(--accent-light); }
 @media (min-width: 640px) { .streak-dot { width: 44px; height: 44px; } }
+
+/* ── Protocol Path ── */
+.protocol-path { display: flex; flex-direction: column; gap: 0; position: relative; }
+.protocol-node { display: flex; gap: 16px; position: relative; padding-bottom: 24px; }
+.protocol-node:last-child { padding-bottom: 0; }
+.protocol-node-line { position: absolute; left: 15px; top: 32px; bottom: 0; width: 2px; background: var(--border); }
+.protocol-node:last-child .protocol-node-line { display: none; }
+.protocol-node[data-completed="true"] .protocol-node-line { background: var(--accent); }
+.protocol-node-dot {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--border); background: var(--bg-card); font-size: 14px; color: var(--text-muted);
+  position: relative; z-index: 1; transition: all 0.3s ease;
+}
+.protocol-node[data-completed="true"] .protocol-node-dot {
+  border-color: var(--accent); background: var(--accent-light); color: var(--accent);
+}
+.protocol-node[data-current="true"] .protocol-node-dot {
+  border-color: var(--accent); background: var(--accent); color: white;
+  box-shadow: 0 0 0 4px var(--accent-glow);
+}
+.protocol-node-content { flex: 1; padding-top: 4px; }
+.protocol-node-label { font-size: 17px; font-weight: 600; color: var(--text); }
+.protocol-node[data-future="true"] .protocol-node-label { color: var(--text-muted); }
+.protocol-node-detail { font-size: 15px; color: var(--text-secondary); margin-top: 2px; line-height: 1.5; }
+.protocol-node[data-future="true"] .protocol-node-detail { color: var(--text-muted); }
+.protocol-node-badge { font-size: 13px; color: var(--accent); font-weight: 600; margin-top: 4px; }
+
+/* ── Badge Reveal Animation ── */
+@keyframes badge-reveal { 0% { transform: scale(0.92); opacity: 0.6; } 100% { transform: scale(1); opacity: 1; } }
+.badge-new { animation: badge-reveal 0.5s ease-out; }
 
 /* ── Stimulus Area ── */
 .stimulus-field {
@@ -608,6 +611,80 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
 .mb-sm { margin-bottom: 8px; }
 .mb-md { margin-bottom: 16px; }
 .mb-lg { margin-bottom: 24px; }
+
+/* ── Font Size Scaling ── */
+[data-font-size="normal"] { --font-scale: 1; }
+[data-font-size="large"] { --font-scale: 1.15; }
+[data-font-size="extraLarge"] { --font-scale: 1.3; }
+
+body { font-size: calc(16px * var(--font-scale, 1)); }
+.heading-lg { font-size: calc(28px * var(--font-scale, 1)); }
+.heading-md { font-size: calc(24px * var(--font-scale, 1)); }
+.heading-sm { font-size: calc(18px * var(--font-scale, 1)); }
+.text-body { font-size: calc(18px * var(--font-scale, 1)); }
+.text-small { font-size: calc(16px * var(--font-scale, 1)); }
+.text-label { font-size: calc(14px * var(--font-scale, 1)); }
+.stat-giant { font-size: calc(62px * var(--font-scale, 1)); }
+.stat-large { font-size: calc(50px * var(--font-scale, 1)); }
+.stat-medium { font-size: calc(26px * var(--font-scale, 1)); }
+.btn-primary { font-size: calc(19px * var(--font-scale, 1)); }
+.btn-secondary { font-size: calc(18px * var(--font-scale, 1)); }
+.btn-start { font-size: calc(20px * var(--font-scale, 1)); }
+.input-field { font-size: calc(19px * var(--font-scale, 1)); }
+.input-label { font-size: calc(17px * var(--font-scale, 1)); }
+.nav-label { font-size: calc(13px * var(--font-scale, 1)); }
+.settings-row { font-size: calc(18px * var(--font-scale, 1)); }
+.legal-p { font-size: calc(17px * var(--font-scale, 1)); }
+.legal-h { font-size: calc(18px * var(--font-scale, 1)); }
+
+/* Cap font scaling on trial elements to avoid layout breakage */
+.screen-trial .btn-peripheral { font-size: calc(16px * min(var(--font-scale, 1), 1.15)); }
+.screen-trial .btn-choice { font-size: calc(15px * min(var(--font-scale, 1), 1.15)); }
+
+/* ── High Contrast Mode ── */
+[data-contrast="high"] {
+  --text: #000000;
+  --text-secondary: #1A1A1A;
+  --text-muted: #444444;
+  --bg: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-card-alt: #F0F0F0;
+  --bg-input: #FFFFFF;
+  --border: #333333;
+  --border-light: #666666;
+  --accent: #005500;
+  --accent-hover: #004400;
+  --accent-light: rgba(0,85,0,0.12);
+  --accent-border: rgba(0,85,0,0.35);
+  --accent-glow: rgba(0,85,0,0.15);
+  --gold: #6B4A00;
+  --gold-light: rgba(107,74,0,0.10);
+  --gold-border: rgba(107,74,0,0.25);
+  --correct: #005500;
+  --incorrect: #990000;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.12);
+  --shadow-md: 0 3px 10px rgba(0,0,0,0.15);
+  --chart-line: #005500;
+  --chart-grid: #999999;
+  --bar-active: #005500;
+  --bar-muted: #AAAAAA;
+}
+[data-contrast="high"] .card { border-width: 2px; }
+[data-contrast="high"] .btn-primary { font-weight: 800; }
+[data-contrast="high"] .btn-secondary { border-width: 2px; }
+[data-contrast="high"] .input-field { border-width: 2px; }
+[data-contrast="high"] .btn-peripheral { border-width: 2px; }
+
+/* ── RTL Support (Arabic) ── */
+[dir="rtl"] .flex-between { flex-direction: row-reverse; }
+[dir="rtl"] .bottom-nav { direction: rtl; }
+[dir="rtl"] .settings-row { flex-direction: row-reverse; }
+[dir="rtl"] .global-header { flex-direction: row-reverse; }
+[dir="rtl"] .app-content { direction: rtl; text-align: right; }
+[dir="rtl"] .hero-cta-row { flex-direction: row-reverse; }
+[dir="rtl"] .exercise-grid { direction: rtl; }
+[dir="rtl"] .auth-toggle { flex-direction: row-reverse; }
+[dir="rtl"] .stat-giant, [dir="rtl"] .stat-large, [dir="rtl"] .stat-medium { direction: ltr; }
 `;
 
 // Inject stylesheet once
@@ -621,7 +698,6 @@ if (!document.getElementById('cognify-styles')) {
 /* ═══════════════════════════════════════════════════════════
    CONSTANTS
    ═══════════════════════════════════════════════════════════ */
-const INITIAL_DISPLAY_TIME = 500;
 const STEP_DOWN = 17;
 const STEP_UP = 25;
 const STREAK_THRESHOLD = 3;
@@ -632,6 +708,10 @@ const EXERCISE_2_TRIALS_PER_BLOCK = 30;
 const EXERCISE_3_TRIALS_PER_BLOCK = 25;
 const BASELINE_TRIAL_COUNT = 20;
 const BLOCKS_PER_SESSION = 2;
+const SESSION_MODES = {
+  mini: { blocks: 1, label: "Mini (~6 min)", minutes: 6 },
+  full: { blocks: 2, label: "Full (~12 min)", minutes: 12 },
+};
 const UNLOCK_EXERCISE_2_THRESHOLD = 150;
 const UNLOCK_EXERCISE_3_THRESHOLD = 100;
 const STORAGE_PREFIX = "cognify_";
@@ -659,107 +739,60 @@ function getEarnedBadges(appData) {
 /* ═══════════════════════════════════════════════════════════
    RESEARCH CITATIONS
    ═══════════════════════════════════════════════════════════ */
-const RESEARCH_FACTS = [
-  { text: "The ACTIVE study found that speed-of-processing training with boosters was associated with a 25% reduction in dementia diagnoses over 20 years.", source: "Coe et al., Alzheimer's & Dementia: TRCI, 2026", institution: "Johns Hopkins / NIH" },
-  { text: "Processing speed is among the first cognitive abilities to decline with age, often beginning in one's 30s — but it remains highly trainable throughout life.", source: "Salthouse, Psychological Review, 1996", institution: "University of Virginia" },
-  { text: "Cognitive reserve theory suggests that mentally stimulating activities build neural resilience, helping the brain compensate for age-related changes.", source: "Stern, Neuropsychologia, 2009", institution: "Columbia University" },
-  { text: "The Cambridge Centre for Ageing and Neuroscience (Cam-CAN) found that brain connectivity predicts cognitive performance better than chronological age.", source: "Shafto et al., BMC Neurology, 2014", institution: "Cambridge Centre for Ageing & Neuroscience" },
-  { text: "A meta-analysis of 52 studies confirmed that computerized cognitive training produces meaningful improvements in processing speed among older adults.", source: "Lampit et al., PLOS Medicine, 2014", institution: "University of Sydney" },
-  { text: "The NIH Toolbox Cognition Battery identifies processing speed as one of the core measurable domains of cognitive health across the lifespan.", source: "Weintraub et al., Neurology, 2013", institution: "NIH / Northwestern University" },
-  { text: "Useful Field of View training — the basis for speed exercises — has been linked to maintained driving safety and independence in older adults.", source: "Ball et al., Journal of the American Geriatrics Society, 2010", institution: "University of Alabama at Birmingham" },
-  { text: "Booster sessions were essential — only participants who received initial training plus periodic boosters showed lasting risk reductions.", source: "Coe et al., 2026; Rebok et al., JAGS, 2014", institution: "Johns Hopkins / NIA" },
-  { text: "Adaptive difficulty is critical: training that adjusts to individual performance produces larger and more durable cognitive gains.", source: "Brehmer et al., Psychology and Aging, 2012", institution: "Karolinska Institute" },
-  { text: "The FINGER trial demonstrated that multimodal interventions including cognitive training can reduce cognitive decline risk in at-risk older adults.", source: "Ngandu et al., The Lancet, 2015", institution: "Karolinska Institute / Univ. of Eastern Finland" },
-  { text: "Improvements from speed-of-processing training transfer to everyday functioning, including faster performance of daily tasks.", source: "Edwards et al., Journal of the American Geriatrics Society, 2005", institution: "University of South Florida" },
-  { text: "Neuroimaging studies show that cognitive training can increase white matter integrity in older adults, supporting faster neural communication.", source: "Lövdén et al., NeuroImage, 2010", institution: "Max Planck Institute for Human Development" },
-  { text: "The WHO recommends cognitive training as part of a comprehensive approach to reducing dementia risk in adults with normal cognition.", source: "WHO Risk Reduction Guidelines, 2019", institution: "World Health Organization" },
-];
+const RESEARCH_FACT_COUNT = 13;
+const SESSION_ENCOURAGEMENT_COUNT = 8;
+const BETWEEN_BLOCK_COUNT = 4;
+const MID_BREAK_COUNT = 10;
 
-const SESSION_ENCOURAGEMENTS = [
-  "Your brain is adapting. Every session builds lasting resilience.",
-  "Consistency is the key finding from the research. You're building the habit that matters.",
-  "Real improvement is showing in your data. Keep going.",
-  "This is exactly the kind of training that produced results over 20 years.",
-  "Your processing speed is a trainable skill. Today you made it stronger.",
-  "The ACTIVE study participants saw benefits that lasted decades. You're investing in that same protection.",
-  "Each trial strengthens the neural pathways that support faster visual processing.",
-  "You're doing something no pill, no diet, and no other brain game has been proven to do.",
-];
+function getResearchFact(t, index) {
+  return { text: t(`researchFact.${index}.text`), source: t(`researchFact.${index}.source`), institution: t(`researchFact.${index}.institution`) };
+}
+function getEncouragement(t, index) { return t(`encouragement.${index}`); }
+function getBetweenBlockMsg(t, index) {
+  return { encouragement: t(`betweenBlock.${index}.encouragement`), fact: t(`betweenBlock.${index}.fact`), source: t(`betweenBlock.${index}.source`) };
+}
+function getMidBreak(t, index) {
+  return { text: t(`midBreak.${index}.text`), source: t(`midBreak.${index}.source`) };
+}
 
-const BETWEEN_BLOCK_MESSAGES = [
-  { encouragement: "You're doing great. Take a slow breath in, hold, and release.", fact: "The ACTIVE study found rest periods between training blocks help consolidate learning gains.", source: "Rebok et al., JAGS, 2014" },
-  { encouragement: "Nice work on that block. Close your eyes for a moment and relax.", fact: "Brief rest periods during cognitive training allow working memory to reset, improving subsequent performance.", source: "Brehmer et al., Psychology and Aging, 2012" },
-  { encouragement: "Well done. Let your eyes rest — look at something distant for a few seconds.", fact: "Visual processing speed improvements transfer to real-world tasks like safer driving and faster daily functioning.", source: "Ball et al., JAGS, 2010" },
-  { encouragement: "Good progress. Take a deep breath — you've earned the pause.", fact: "The brain continues to consolidate training gains during rest. These micro-breaks are part of the protocol.", source: "Edwards et al., JAGS, 2005" },
-];
-
-function getPersonalizedImpactMessage(sessions, improvement, baseline) {
+function getPersonalizedImpactMessage(t, sessions, improvement, baseline) {
   const totalSessions = (sessions || []).length;
-  const sessionProgress = Math.min(1, totalSessions / 14);
-  const improvementFactor = Math.min(1, Math.max(0, improvement) / 100);
-  const riskReduction = Math.round(Math.min(25, (sessionProgress * 0.6 + improvementFactor * 0.4) * 25));
 
   const messages = [];
 
   if (totalSessions >= 1 && totalSessions < 5) {
-    messages.push({ text: `You've completed ${totalSessions} of the ~14 sessions in the ACTIVE study protocol. Every session counts.`, source: "Coe et al., Alzheimer's & Dementia: TRCI, 2026", icon: "📊" });
+    messages.push({ text: t("impact.earlyProgress", { count: totalSessions }), source: "Coe et al., Alzheimer's & Dementia: TRCI, 2026", icon: "📊" });
   }
   if (totalSessions >= 5 && totalSessions < 10) {
-    messages.push({ text: `${totalSessions} sessions in — you're halfway through the core ACTIVE protocol. Your estimated dementia risk reduction: ~${riskReduction}%.`, source: "Coe et al., 2026", icon: "📉" });
+    messages.push({ text: t("impact.midProgress", { count: totalSessions }), source: "Coe et al., 2026", icon: "📉" });
   }
   if (totalSessions >= 10) {
-    messages.push({ text: `You've matched the ACTIVE study's 10-session core protocol. Estimated risk reduction: ~${riskReduction}%. Continued training (boosters) is what made the difference.`, source: "Coe et al., 2026; Rebok et al., 2014", icon: "🏅" });
+    messages.push({ text: t("impact.coreComplete"), source: "Coe et al., 2026; Rebok et al., 2014", icon: "🏅" });
   }
   if (improvement > 20) {
-    messages.push({ text: `Your processing speed has improved by ${improvement}ms — that's a ${Math.round((improvement/baseline)*100)}% improvement from your baseline. This kind of gain is exactly what the ACTIVE study measured.`, source: "Edwards et al., JAGS, 2005", icon: "⚡" });
+    messages.push({ text: t("impact.speedImprovement", { improvement, percent: Math.round((improvement/baseline)*100) }), source: "Edwards et al., JAGS, 2005", icon: "⚡" });
   }
   if (improvement > 50) {
-    messages.push({ text: `A ${improvement}ms improvement means your visual processing is meaningfully faster. Research shows this transfers to everyday tasks like driving and decision-making.`, source: "Ball et al., JAGS, 2010", icon: "🚗" });
+    messages.push({ text: t("impact.meaningfulImprovement", { improvement }), source: "Ball et al., JAGS, 2010", icon: "🚗" });
   }
   if (totalSessions >= 14) {
-    messages.push({ text: `${totalSessions} sessions completed — you've gone beyond the full ACTIVE protocol. In the study, this level of training was associated with 25% fewer dementia diagnoses over 20 years.`, source: "Coe et al., 2026", icon: "🧠" });
-  }
-  if (riskReduction > 0) {
-    messages.push({ text: `Based on your progress, your estimated dementia risk reduction is ~${riskReduction}%, tracking toward the study's maximum finding of 25%.`, source: "Coe et al., 2026", icon: "🛡️" });
+    messages.push({ text: t("impact.fullProtocol", { count: totalSessions }), source: "Coe et al., 2026", icon: "🧠" });
   }
 
   return messages.length > 0 ? messages[Math.floor(Math.random() * messages.length)] : null;
 }
 
-const randomFact = () => RESEARCH_FACTS[Math.floor(Math.random() * RESEARCH_FACTS.length)];
-const randomEncouragement = () => SESSION_ENCOURAGEMENTS[Math.floor(Math.random() * SESSION_ENCOURAGEMENTS.length)];
-const randomBetweenBlock = () => BETWEEN_BLOCK_MESSAGES[Math.floor(Math.random() * BETWEEN_BLOCK_MESSAGES.length)];
+const randomFactIndex = () => Math.floor(Math.random() * RESEARCH_FACT_COUNT);
+const randomEncouragementIndex = () => Math.floor(Math.random() * SESSION_ENCOURAGEMENT_COUNT);
+const randomBetweenBlockIndex = () => Math.floor(Math.random() * BETWEEN_BLOCK_COUNT);
 
-const MID_TRIAL_BREAKS = [
-  { text: "Every session you complete brings you closer to the 10-session core protocol used in the ACTIVE study.", source: "Coe et al., 2026" },
-  { text: "Speed-of-processing training is the only cognitive intervention proven to reduce dementia diagnoses in a 20-year randomized trial.", source: "Coe et al., Alzheimer's & Dementia: TRCI, 2026" },
-  { text: "Your brain is building cognitive reserve right now — broader neural network engagement that resists age-related decline.", source: "Stern, Neuropsychologia, 2009" },
-  { text: "Adaptive difficulty — what you're experiencing — is the key mechanism that made this training work when other brain games didn't.", source: "Brehmer et al., Psychology and Aging, 2012" },
-  { text: "Research shows these improvements transfer to real life: participants performed everyday tasks faster after training.", source: "Edwards et al., JAGS, 2005" },
-  { text: "The Cambridge Centre for Ageing found that brain connectivity matters more than chronological age for cognitive performance.", source: "Shafto et al., BMC Neurology, 2014" },
-  { text: "White matter integrity — the wiring that connects brain regions — has been shown to increase with cognitive training.", source: "Lövdén et al., NeuroImage, 2010" },
-  { text: "UFOV training, the basis for these exercises, has been linked to maintained driving safety in older adults.", source: "Ball et al., JAGS, 2010" },
-  { text: "A meta-analysis of 52 studies confirmed: computerized training like this produces real improvements in processing speed.", source: "Lampit et al., PLOS Medicine, 2014" },
-  { text: "The World Health Organization recommends cognitive training as part of reducing dementia risk.", source: "WHO Guidelines, 2019" },
-];
-const randomMidBreak = () => MID_TRIAL_BREAKS[Math.floor(Math.random() * MID_TRIAL_BREAKS.length)];
+const randomMidBreakIndex = () => Math.floor(Math.random() * MID_BREAK_COUNT);
 
 /* ═══════════════════════════════════════════════════════════
    SCORING & NORMS
    ═══════════════════════════════════════════════════════════ */
-const AGE_NORMS = { "40–49": 210, "50–59": 250, "60–69": 290, "70–79": 340, "80+": 400 };
+const AGE_NORMS = { "18–29": 180, "30–39": 195, "40–49": 210, "50–59": 250, "60–69": 290, "70–79": 340, "80–89": 400, "90+": 460 };
 
-function estimateCognitiveBenefit(sessionsCompleted, msImprovement) {
-  const sessionFactor = Math.min(1, sessionsCompleted / 14);
-  const improvementFactor = Math.min(1, msImprovement / 100);
-  return ((sessionFactor * 0.6 + improvementFactor * 0.4) * 3.2).toFixed(1);
-}
-
-function estimateRiskReduction(sessionsCompleted, msImprovement) {
-  const sessionFactor = Math.min(1, sessionsCompleted / 14);
-  const improvementFactor = Math.min(1, msImprovement / 100);
-  return Math.round(Math.min(25, (sessionFactor * 0.6 + improvementFactor * 0.4) * 25));
-}
 
 /* ═══════════════════════════════════════════════════════════
    SHAPES (SVG stimulus objects)
@@ -791,9 +824,14 @@ const SHAPE_DEFINITIONS = {
 const SHAPE_PAIRS = [["circle","square"],["triangle","diamond"],["star","hexagon"]];
 
 const PERIPHERAL_POSITIONS = [
-  {x:50,y:5,label:"Top"}, {x:88,y:28,label:"Top Right"}, {x:88,y:72,label:"Bottom Right"},
-  {x:50,y:95,label:"Bottom"}, {x:12,y:72,label:"Bottom Left"}, {x:12,y:28,label:"Top Left"},
+  {x:50,y:5,labelKey:"top",label:"Top"}, {x:88,y:28,labelKey:"topRight",label:"Top Right"}, {x:88,y:72,labelKey:"bottomRight",label:"Bottom Right"},
+  {x:50,y:95,labelKey:"bottom",label:"Bottom"}, {x:12,y:72,labelKey:"bottomLeft",label:"Bottom Left"}, {x:12,y:28,labelKey:"topLeft",label:"Top Left"},
 ];
+
+// Display order for the 3-column grid so buttons match their spatial positions:
+// Row 1: [Top Left]    [Top]     [Top Right]
+// Row 2: [Bottom Left] [Bottom]  [Bottom Right]
+const PERIPHERAL_DISPLAY_ORDER = [5, 0, 1, 4, 3, 2];
 
 function ShapeIcon({ shapeKey, size = 80 }) {
   const shape = SHAPE_DEFINITIONS[shapeKey];
@@ -829,22 +867,12 @@ async function secureHashPassword(password) {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   THEME CONTEXT
-   ═══════════════════════════════════════════════════════════ */
-const ThemeContext = createContext({ mode: "light", toggleTheme: () => {} });
-
-/* ═══════════════════════════════════════════════════════════
    SHARED COMPONENTS
    ═══════════════════════════════════════════════════════════ */
 function GlobalHeader({ setScreen, rightContent }) {
   return (
     <div className="global-header">
       <div className="logo" onClick={() => setScreen("landing")}>
-        <svg className="logo-icon" width="28" height="28" viewBox="0 0 28 28">
-          <circle cx="14" cy="14" r="12" fill="none" stroke="currentColor" strokeWidth="1.8"/>
-          <circle cx="14" cy="14" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.4"/>
-          <circle cx="14" cy="14" r="2.5" fill="currentColor"/>
-        </svg>
         COGNIFY
       </div>
       {rightContent || null}
@@ -861,7 +889,7 @@ function SessionProgressBar({ current, total, label }) {
       </div>
       {label !== false && (
         <div className="session-progress-label">
-          <span>{current} of {total} trials</span>
+          <span>{current} / {total}</span>
           <span><strong>{Math.round(percent)}%</strong></span>
         </div>
       )}
@@ -870,7 +898,9 @@ function SessionProgressBar({ current, total, label }) {
 }
 
 function ResearchSnippet() {
-  const [fact] = useState(randomFact);
+  const { t } = useTranslation();
+  const [factIdx] = useState(randomFactIndex);
+  const fact = getResearchFact(t, factIdx);
   return (
     <div className="card" style={{display:"flex",gap:12,alignItems:"flex-start"}}>
       <span style={{fontSize:20,flexShrink:0,marginTop:2}}>📚</span>
@@ -885,17 +915,24 @@ function ResearchSnippet() {
   );
 }
 
+const NavIcons = {
+  home: <svg viewBox="0 0 24 24"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>,
+  progress: <svg viewBox="0 0 24 24"><path d="M3 20h4V10H3zM10 20h4V4h-4zM17 20h4v-8h-4z"/></svg>,
+  science: <svg viewBox="0 0 24 24"><path d="M9 3v7.4L4.2 18.2A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.3-2.8L15 10.4V3"/><path d="M9 3h6"/><path d="M8.5 14h7"/></svg>,
+};
+
 function BottomNav({ current, onNavigate }) {
+  const { t } = useTranslation();
   const items = [
-    { key: "home", icon: "🏠", label: "Home", screen: "dashboard" },
-    { key: "progress", icon: "📊", label: "Progress", screen: "progress" },
-    { key: "science", icon: "🔬", label: "Science", screen: "science" },
+    { key: "home", label: t("nav.home"), screen: "dashboard" },
+    { key: "progress", label: t("nav.progress"), screen: "progress" },
+    { key: "science", label: t("nav.science"), screen: "science" },
   ];
   return (
     <nav className="bottom-nav">
       {items.map(item => (
         <button key={item.key} className="nav-item" data-active={current === item.key} onClick={() => onNavigate(item.screen)}>
-          <span className="nav-icon">{item.icon}</span>
+          <span className="nav-icon">{NavIcons[item.key]}</span>
           <span className="nav-label">{item.label}</span>
         </button>
       ))}
@@ -910,33 +947,37 @@ function ChartTooltipStyle() {
 /* ═══════════════════════════════════════════════════════════
    APP ROOT
    ═══════════════════════════════════════════════════════════ */
+const DEFAULT_AGE_GROUP = "60–69";
 const DEFAULT_APP_DATA = {
   onboarded: false, baseline: null, sessions: [],
   exerciseUnlocks: { 1: true, 2: false, 3: false },
-  lastThresholds: { 1: INITIAL_DISPLAY_TIME, 2: INITIAL_DISPLAY_TIME, 3: INITIAL_DISPLAY_TIME },
-  currentExercise: 1, ageGroup: "60–69", weeklyGoal: 3,
+  lastThresholds: { 1: null, 2: null, 3: null },
+  currentExercise: 1, ageGroup: DEFAULT_AGE_GROUP, weeklyGoal: 3, sessionMode: "full",
   acceptedTerms: false, acceptedPrivacy: false, researchConsent: false,
+  language: "en", fontSize: "normal", highContrast: false,
 };
 
 export default function CognifyApp() {
-  const [mode, setMode] = useState("light");
   const [user, setUser] = useState(null);
   const [appData, setAppData] = useState(null);
   const [screen, setScreen] = useState("loading");
   const [loading, setLoading] = useState(true);
-
-  const toggleTheme = useCallback(() => setMode(m => m === "light" ? "dark" : "light"), []);
+  const { setLocale } = useTranslation();
 
   useEffect(() => {
+    document.documentElement.setAttribute("data-theme", "light");
     (async () => {
-      const savedMode = await storageGet("theme");
-      if (savedMode) setMode(savedMode);
       const session = await storageGet("session");
       if (session) {
         setUser(session);
         const data = await storageGet("data_" + session.username);
-        setAppData(data || { ...DEFAULT_APP_DATA });
-        setScreen(data?.onboarded ? "dashboard" : "terms");
+        const merged = data || { ...DEFAULT_APP_DATA };
+        setAppData(merged);
+        setScreen(merged.onboarded ? "dashboard" : "terms");
+        // Restore accessibility preferences
+        if (merged.language && merged.language !== "en") setLocale(merged.language);
+        document.documentElement.setAttribute("data-font-size", merged.fontSize || "normal");
+        if (merged.highContrast) document.documentElement.setAttribute("data-contrast", "high");
       } else {
         setScreen("landing");
       }
@@ -944,16 +985,20 @@ export default function CognifyApp() {
     })();
   }, []);
 
-  useEffect(() => { if (!loading) storageSet("theme", mode); }, [mode, loading]);
-  useEffect(() => { document.documentElement.setAttribute("data-theme", mode); }, [mode]);
-
   const updateAppData = useCallback(async (updates) => {
     setAppData(prev => {
       const next = { ...prev, ...updates };
       if (user) storageSet("data_" + user.username, next);
+      // Apply accessibility changes immediately
+      if (updates.fontSize !== undefined) document.documentElement.setAttribute("data-font-size", updates.fontSize);
+      if (updates.highContrast !== undefined) {
+        if (updates.highContrast) document.documentElement.setAttribute("data-contrast", "high");
+        else document.documentElement.removeAttribute("data-contrast");
+      }
+      if (updates.language !== undefined) setLocale(updates.language);
       return next;
     });
-  }, [user]);
+  }, [user, setLocale]);
 
   const handleAuth = useCallback(async (userData) => {
     setUser(userData);
@@ -971,7 +1016,6 @@ export default function CognifyApp() {
   if (loading) return (
     <div className="app-root screen-centered">
       <div className="logo animate-pulse" style={{fontSize:28,letterSpacing:7}}>
-        <svg className="logo-icon" width="36" height="36" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="none" stroke="currentColor" strokeWidth="1.8"/><circle cx="14" cy="14" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.4"/><circle cx="14" cy="14" r="2.5" fill="currentColor"/></svg>
         COGNIFY
       </div>
     </div>
@@ -980,22 +1024,20 @@ export default function CognifyApp() {
   const props = { appData, updateAppData, setScreen, user, handleLogout };
 
   return (
-    <ThemeContext.Provider value={{ mode, toggleTheme }}>
-      <div className="app-root">
-        {screen === "landing" && <LandingPage setScreen={setScreen} />}
-        {screen === "auth" && <AuthScreen onAuth={handleAuth} setScreen={setScreen} />}
-        {screen === "terms" && <TermsScreen {...props} />}
-        {screen === "privacy" && <PrivacyScreen {...props} />}
-        {screen === "consent" && <ConsentScreen {...props} />}
-        {screen === "onboarding" && <OnboardingScreen {...props} />}
-        {screen === "dashboard" && <DashboardScreen {...props} />}
-        {screen === "training" && <TrainingSession {...props} />}
-        {screen === "summary" && <SessionSummary {...props} />}
-        {screen === "progress" && <ProgressScreen {...props} />}
-        {screen === "science" && <ScienceScreen {...props} />}
-        {screen === "settings" && <SettingsScreen {...props} />}
-      </div>
-    </ThemeContext.Provider>
+    <div className="app-root">
+      {screen === "landing" && <LandingPage setScreen={setScreen} />}
+      {screen === "auth" && <AuthScreen onAuth={handleAuth} setScreen={setScreen} />}
+      {screen === "terms" && <TermsScreen {...props} />}
+      {screen === "privacy" && <PrivacyScreen {...props} />}
+      {screen === "consent" && <ConsentScreen {...props} />}
+      {screen === "onboarding" && <OnboardingScreen {...props} />}
+      {screen === "dashboard" && <DashboardScreen {...props} />}
+      {screen === "training" && <TrainingSession {...props} />}
+      {screen === "summary" && <SessionSummary {...props} />}
+      {screen === "progress" && <ProgressScreen {...props} />}
+      {screen === "science" && <ScienceScreen {...props} />}
+      {screen === "settings" && <SettingsScreen {...props} />}
+    </div>
   );
 }
 
@@ -1003,16 +1045,9 @@ export default function CognifyApp() {
    LANDING PAGE
    ═══════════════════════════════════════════════════════════ */
 function LandingPage({ setScreen }) {
-  const { mode, toggleTheme } = useContext(ThemeContext);
+  const { t } = useTranslation();
   return (
     <div className="landing">
-      {/* Theme toggle floating */}
-      <div style={{position:"fixed",top:16,right:16,zIndex:50}}>
-        <button className="btn btn-icon" onClick={toggleTheme} style={{width:"auto",padding:"10px 16px",fontSize:17,fontWeight:600}}>
-          {mode==="light"?"Dark Mode":"Light Mode"}
-        </button>
-      </div>
-
       {/* ── Hero ── */}
       <section className="landing-hero">
         <div className="animate-in">
@@ -1022,43 +1057,37 @@ function LandingPage({ setScreen }) {
             <circle cx="28" cy="28" r="4.5" fill="var(--accent)"/>
           </svg>
         </div>
-        <div className="hero-eyebrow animate-in-d1">Evidence-Based Brain Training</div>
-        <h1 className="hero-title animate-in-d2">Train your brain's <em>speed</em>. Protect your <em>future</em>.</h1>
+        <div className="hero-eyebrow animate-in-d1">{t("landing.eyebrow")}</div>
+        <h1 className="hero-title animate-in-d2">{t("landing.title.1")}<em>{t("landing.title.speed")}</em>{t("landing.title.2")}<em>{t("landing.title.future")}</em>{t("landing.title.3")}</h1>
         <p className="hero-subtitle animate-in-d3">
-          The only cognitive training app built on the intervention proven in a 20-year NIH clinical trial to reduce dementia risk by 25%.
+          {t("landing.subtitle")}
         </p>
         <div className="hero-cta-row animate-in-d4">
-          <button className="btn btn-primary" onClick={() => setScreen("auth")}>Get Started — It's Free</button>
+          <button className="btn btn-primary" onClick={() => setScreen("auth")}>{t("landing.cta.getStarted")}</button>
           <button className="btn btn-secondary" onClick={() => {
             document.getElementById('landing-science')?.scrollIntoView({ behavior: 'smooth' });
-          }}>See the Science</button>
+          }}>{t("landing.cta.seeScience")}</button>
         </div>
         <div className="hero-stat-row animate-in-d5">
-          <div className="hero-stat"><div className="hero-stat-value">25%</div><div className="hero-stat-label">Dementia risk reduction</div></div>
-          <div className="hero-stat"><div className="hero-stat-value">2,802</div><div className="hero-stat-label">Study participants</div></div>
-          <div className="hero-stat"><div className="hero-stat-value">20</div><div className="hero-stat-label">Years of evidence</div></div>
+          <div className="hero-stat"><div className="hero-stat-value">25%</div><div className="hero-stat-label">{t("landing.stat.riskReduction")}</div></div>
+          <div className="hero-stat"><div className="hero-stat-value">2,802</div><div className="hero-stat-label">{t("landing.stat.participants")}</div></div>
+          <div className="hero-stat"><div className="hero-stat-value">20</div><div className="hero-stat-label">{t("landing.stat.years")}</div></div>
         </div>
         <div className="scroll-hint">
-          <span>Learn more</span>
+          <span>{t("landing.scrollHint")}</span>
           <span className="scroll-arrow">↓</span>
         </div>
       </section>
 
       {/* ── The Science ── */}
       <section className="landing-section" id="landing-science" style={{borderTop:"1px solid var(--border-light)"}}>
-        <div className="landing-section-label">The Research</div>
-        <div className="landing-section-title">The first intervention ever proven to reduce dementia over two decades.</div>
+        <div className="landing-section-label">{t("landing.research.label")}</div>
+        <div className="landing-section-title">{t("landing.research.title")}</div>
         <p className="text-body mb-lg" style={{fontSize:16,maxWidth:600}}>
-          In February 2026, Johns Hopkins and the NIH published the results of the ACTIVE study — the largest and longest
-          cognitive training trial ever conducted. After following 2,802 adults for 20 years, they found that one specific
-          type of brain exercise reduced Alzheimer's and dementia diagnoses by 25%. No drug, no diet, no other brain game
-          has ever shown this in a randomized controlled trial.
+          {t("landing.research.body")}
         </p>
         <div className="card mb-md" style={{maxWidth:540}}>
-          <div className="landing-quote" style={{margin:0,padding:0,textAlign:"left",fontSize:17}}>
-            That one exercise was <strong style={{color:"var(--accent)",fontStyle:"normal"}}>adaptive visual speed-of-processing training</strong>.
-            That's exactly what Cognify delivers.
-          </div>
+          <div className="landing-quote" style={{margin:0,padding:0,textAlign:"left",fontSize:17}} dangerouslySetInnerHTML={{__html: t("landing.research.highlight")}}/>
         </div>
         <div className="citation" style={{maxWidth:540}}>
           <div className="citation-source">Coe et al., "Impact of Cognitive Training on Claims-Based Diagnosed Dementia Over 20 Years." Alzheimer's & Dementia: TRCI, 2026</div>
@@ -1068,56 +1097,55 @@ function LandingPage({ setScreen }) {
 
       {/* ── How It Works ── */}
       <section className="landing-section" style={{borderTop:"1px solid var(--border-light)"}}>
-        <div className="landing-section-label">How It Works</div>
-        <div className="landing-section-title">12 minutes, 3 times a week.</div>
+        <div className="landing-section-label">{t("landing.howItWorks.label")}</div>
+        <div className="landing-section-title">{t("landing.howItWorks.title")}</div>
         <p className="text-body mb-lg" style={{fontSize:16,maxWidth:560}}>
-          Cognify progressively challenges your brain's processing speed with three scientifically-designed exercises
-          that adapt to your exact ability in real time — the key mechanism that made the ACTIVE study work.
+          {t("landing.howItWorks.body")}
         </p>
         <div className="feature-grid">
           <div className="feature-card">
             <div className="feature-icon">👁️</div>
-            <div className="feature-title">Central Identification</div>
-            <div className="feature-desc">Identify briefly flashed objects with decreasing display times. Builds foundational visual processing speed.</div>
+            <div className="feature-title">{t("landing.exercise.centralId.title")}</div>
+            <div className="feature-desc">{t("landing.exercise.centralId.desc")}</div>
           </div>
           <div className="feature-card">
             <div className="feature-icon">🎯</div>
-            <div className="feature-title">Divided Attention</div>
-            <div className="feature-desc">Track central and peripheral targets simultaneously. Trains the brain's ability to process multiple inputs at once.</div>
+            <div className="feature-title">{t("landing.exercise.dividedAttention.title")}</div>
+            <div className="feature-desc">{t("landing.exercise.dividedAttention.desc")}</div>
           </div>
           <div className="feature-card">
             <div className="feature-icon">⚡</div>
-            <div className="feature-title">Selective Attention</div>
-            <div className="feature-desc">Find targets among visual distractors. Mirrors the hardest phase of the original ACTIVE study protocol.</div>
+            <div className="feature-title">{t("landing.exercise.selectiveAttention.title")}</div>
+            <div className="feature-desc">{t("landing.exercise.selectiveAttention.desc")}</div>
           </div>
           <div className="feature-card">
             <div className="feature-icon">📊</div>
-            <div className="feature-title">Adaptive Difficulty</div>
-            <div className="feature-desc">Every session adjusts to your performance using a 3-up/1-down staircase — the exact algorithm from the clinical trial.</div>
+            <div className="feature-title">{t("landing.exercise.adaptiveDifficulty.title")}</div>
+            <div className="feature-desc">{t("landing.exercise.adaptiveDifficulty.desc")}</div>
           </div>
         </div>
       </section>
 
       {/* ── Why This Is Different ── */}
       <section className="landing-section" style={{borderTop:"1px solid var(--border-light)"}}>
-        <div className="landing-section-label">Why Cognify</div>
-        <div className="landing-section-title">Not another brain game.</div>
+        <div className="landing-section-label">{t("landing.whyCognify.label")}</div>
+        <div className="landing-section-title">{t("landing.whyCognify.title")}</div>
         <div className="feature-grid">
           <div className="feature-card">
-            <div className="feature-title">Backed by a named RCT</div>
-            <div className="feature-desc">Lumosity was fined $2M by the FTC for unsubstantiated claims. Cognify is built on a specific, published, 20-year randomized controlled trial.</div>
+            <div className="feature-title">{t("landing.whyCognify.rct.title")}</div>
+            <div className="feature-desc">{t("landing.whyCognify.rct.desc")}</div>
           </div>
           <div className="feature-card">
-            <div className="feature-title">Focused, not cluttered</div>
-            <div className="feature-desc">BrainHQ charges $14/month for 29 exercises. Cognify does one thing — the thing that actually worked — and does it well.</div>
+            <div className="feature-title">{t("landing.whyCognify.focused.title")}</div>
+            <div className="feature-desc">{t("landing.whyCognify.focused.desc")}</div>
           </div>
           <div className="feature-card">
-            <div className="feature-title">Your progress, quantified</div>
-            <div className="feature-desc">Track your processing speed, accuracy, and estimated dementia risk reduction based on your real training data.</div>
+            <div className="feature-title">{t("landing.whyCognify.progress.title")}</div>
+            <div className="feature-desc">{t("landing.whyCognify.progress.desc")}</div>
           </div>
           <div className="feature-card">
-            <div className="feature-title">Research-transparent</div>
-            <div className="feature-desc">Every claim in Cognify is cited. Every statistic has a source. We show you the papers, not marketing copy.</div>
+            <div className="feature-title">{t("landing.whyCognify.transparent.title")}</div>
+            <div className="feature-desc">{t("landing.whyCognify.transparent.desc")}</div>
           </div>
         </div>
       </section>
@@ -1125,35 +1153,34 @@ function LandingPage({ setScreen }) {
       {/* ── Endorsement ── */}
       <section className="landing-section text-center" style={{borderTop:"1px solid var(--border-light)"}}>
         <div className="landing-quote">
-          "This is the first randomized controlled trial to demonstrate any intervention — cognitive, pharmacological, dietary, or exercise-based — can reduce dementia incidence over two decades."
+          {t("landing.endorsement.quote")}
         </div>
-        <div className="text-small">NIH News Release, February 2026</div>
+        <div className="text-small">{t("landing.endorsement.source")}</div>
       </section>
 
       {/* ── CTA ── */}
       <section className="landing-section text-center" style={{borderTop:"1px solid var(--border-light)"}}>
-        <div className="landing-section-title" style={{marginBottom:12}}>Start protecting your brain today.</div>
+        <div className="landing-section-title" style={{marginBottom:12}}>{t("landing.cta.title")}</div>
         <p className="text-body mb-lg" style={{maxWidth:440,margin:"0 auto 24px"}}>
-          Free to start. No credit card. Based on the science that matters.
+          {t("landing.cta.body")}
         </p>
         <div style={{maxWidth:320,margin:"0 auto"}}>
-          <button className="btn btn-primary" onClick={() => setScreen("auth")}>Create Free Account</button>
+          <button className="btn btn-primary" onClick={() => setScreen("auth")}>{t("landing.cta.createAccount")}</button>
         </div>
         <p className="text-body mt-md">
-          Already have an account? <span style={{color:"var(--accent)",cursor:"pointer",fontWeight:600}} onClick={() => setScreen("auth")}>Sign in</span>
+          {t("landing.cta.haveAccount")} <span style={{color:"var(--accent)",cursor:"pointer",fontWeight:600}} onClick={() => setScreen("auth")}>{t("landing.cta.signIn")}</span>
         </p>
       </section>
 
       {/* ── Footer ── */}
       <footer className="landing-footer">
         <div className="logo mb-sm" style={{fontSize:16,justifyContent:"center"}}>
-          <svg className="logo-icon" width="20" height="20" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="none" stroke="currentColor" strokeWidth="1.8"/><circle cx="14" cy="14" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.4"/><circle cx="14" cy="14" r="2.5" fill="currentColor"/></svg>
           COGNIFY
         </div>
-        <p className="text-small">Cognitive fitness training based on the ACTIVE study.</p>
-        <p className="text-small mt-sm">Not a medical device. Not FDA evaluated. Does not claim to prevent, treat, or cure dementia.</p>
+        <p className="text-small">{t("landing.footer.tagline")}</p>
+        <p className="text-small mt-sm">{t("landing.footer.disclaimer")}</p>
         <div style={{marginTop:20,paddingTop:16,borderTop:"1px solid var(--border-light)"}}>
-          <p className="text-small" style={{color:"var(--text-muted)",marginBottom:4}}>Built by</p>
+          <p className="text-small" style={{color:"var(--text-muted)",marginBottom:4}}>{t("landing.footer.builtBy")}</p>
           <p style={{fontSize:16,color:"var(--text-secondary)",fontWeight:500,lineHeight:1.8}}>
             Enrique Reid · Khushaan Virk · Dean Kiyingi · Jasper Gilley
           </p>
@@ -1167,6 +1194,7 @@ function LandingPage({ setScreen }) {
    AUTH SCREEN — Username + Password
    ═══════════════════════════════════════════════════════════ */
 function AuthScreen({ onAuth, setScreen: setAppScreen }) {
+  const { t } = useTranslation();
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -1179,25 +1207,25 @@ function AuthScreen({ onAuth, setScreen: setAppScreen }) {
 
   const handleLogin = async () => {
     setError("");
-    if (!username.trim() || !password.trim()) return setError("Please fill in all fields.");
+    if (!username.trim() || !password.trim()) return setError(t("auth.error.fillAll"));
     setLoading(true);
     const hashed = await secureHashPassword(password);
     const stored = await storageGet("user_" + username.toLowerCase());
     setLoading(false);
-    if (!stored) return setError("Account not found. Please create one first.");
-    if (stored.passwordHash !== hashed) return setError("Incorrect password. Please try again.");
+    if (!stored) return setError(t("auth.error.accountNotFound"));
+    if (stored.passwordHash !== hashed) return setError(t("auth.error.incorrectPassword"));
     onAuth(stored);
   };
 
   const handleSignup = async () => {
     setError("");
-    if (!username.trim() || !password.trim() || !confirmPassword.trim()) return setError("Please fill in all fields.");
-    if (username.trim().length < 3) return setError("Username must be at least 3 characters.");
-    if (password.length < 6) return setError("Password must be at least 6 characters.");
-    if (password !== confirmPassword) return setError("Passwords do not match.");
+    if (!username.trim() || !password.trim() || !confirmPassword.trim()) return setError(t("auth.error.fillAll"));
+    if (username.trim().length < 3) return setError(t("auth.error.usernameLength"));
+    if (password.length < 6) return setError(t("auth.error.passwordLength"));
+    if (password !== confirmPassword) return setError(t("auth.error.passwordMismatch"));
 
     const existing = await storageGet("user_" + username.toLowerCase());
-    if (existing) return setError("Username is already taken. Try another.");
+    if (existing) return setError(t("auth.error.usernameTaken"));
 
     setLoading(true);
     const hashed = await secureHashPassword(password);
@@ -1218,33 +1246,33 @@ function AuthScreen({ onAuth, setScreen: setAppScreen }) {
       <div className="app-content animate-in" style={{maxWidth:420}}>
         {/* Toggle */}
         <div className="auth-toggle mb-lg">
-          <button className="auth-toggle-btn" data-active={isLogin} onClick={() => { setIsLogin(true); clearForm(); }}>Sign In</button>
-          <button className="auth-toggle-btn" data-active={!isLogin} onClick={() => { setIsLogin(false); clearForm(); }}>Create Account</button>
+          <button className="auth-toggle-btn" data-active={isLogin} onClick={() => { setIsLogin(true); clearForm(); }}>{t("auth.signIn")}</button>
+          <button className="auth-toggle-btn" data-active={!isLogin} onClick={() => { setIsLogin(false); clearForm(); }}>{t("auth.createAccount")}</button>
         </div>
 
         <div className="flex-col gap-md" style={{textAlign:"left"}}>
           <div className="input-group">
-            <label className="input-label">Username</label>
+            <label className="input-label">{t("auth.username")}</label>
             <input className="input-field" value={username} onChange={e => setUsername(e.target.value)}
-              placeholder={isLogin ? "Your username" : "Choose a username"} onKeyDown={onKeyDown} autoFocus/>
+              placeholder={isLogin ? t("auth.placeholder.username.login") : t("auth.placeholder.username.signup")} onKeyDown={onKeyDown} autoFocus/>
           </div>
           <div className="input-group">
-            <label className="input-label">Password</label>
+            <label className="input-label">{t("auth.password")}</label>
             <div style={{position:"relative"}}>
               <input className="input-field" style={{paddingRight:56}} type={showPassword ? "text" : "password"}
                 value={password} onChange={e => setPassword(e.target.value)}
-                placeholder={isLogin ? "Your password" : "At least 6 characters"} onKeyDown={onKeyDown}/>
+                placeholder={isLogin ? t("auth.placeholder.password.login") : t("auth.placeholder.password.signup")} onKeyDown={onKeyDown}/>
               <button className="btn btn-ghost" onClick={() => setShowPassword(!showPassword)}
                 style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",fontSize:16,fontWeight:600}}>
-                {showPassword ? "Hide" : "Show"}
+                {showPassword ? t("auth.hide") : t("auth.show")}
               </button>
             </div>
           </div>
           {!isLogin && (
             <div className="input-group">
-              <label className="input-label">Confirm Password</label>
+              <label className="input-label">{t("auth.confirmPassword")}</label>
               <input className="input-field" type={showPassword ? "text" : "password"} value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)} placeholder="Confirm your password" onKeyDown={onKeyDown}/>
+                onChange={e => setConfirmPassword(e.target.value)} placeholder={t("auth.placeholder.confirmPassword")} onKeyDown={onKeyDown}/>
             </div>
           )}
         </div>
@@ -1252,13 +1280,13 @@ function AuthScreen({ onAuth, setScreen: setAppScreen }) {
         {error && <div className="error-msg">{error}</div>}
 
         <button className="btn btn-primary mt-lg" onClick={isLogin ? handleLogin : handleSignup} disabled={loading}>
-          {loading ? (isLogin ? "Signing in…" : "Creating account…") : (isLogin ? "Sign In" : "Create Account")}
+          {loading ? (isLogin ? t("auth.signingIn") : t("auth.creatingAccount")) : (isLogin ? t("auth.signIn") : t("auth.createAccount"))}
         </button>
 
         <p className="text-body text-center mt-md">
-          {isLogin ? "New here? " : "Have an account? "}
+          {isLogin ? t("auth.newHere") : t("auth.haveAccount")}
           <span style={{color:"var(--accent)",cursor:"pointer",fontWeight:600}} onClick={() => { setIsLogin(!isLogin); clearForm(); }}>
-            {isLogin ? "Create an account" : "Sign in"}
+            {isLogin ? t("auth.createAnAccount") : t("auth.signIn")}
           </span>
         </p>
       </div>
@@ -1271,6 +1299,7 @@ function AuthScreen({ onAuth, setScreen: setAppScreen }) {
    LEGAL SCREENS (Terms, Privacy, Consent)
    ═══════════════════════════════════════════════════════════ */
 function LegalScreen({ title, checkLabel, onAccept, children, setScreen }) {
+  const { t } = useTranslation();
   const [accepted, setAccepted] = useState(false);
   return (
     <div className="screen flex-col">
@@ -1282,83 +1311,86 @@ function LegalScreen({ title, checkLabel, onAccept, children, setScreen }) {
           <input type="checkbox" checked={accepted} onChange={e => setAccepted(e.target.checked)}/>
           <span>{checkLabel}</span>
         </label>
-        <button className="btn btn-primary" disabled={!accepted} onClick={onAccept}>Continue</button>
+        <button className="btn btn-primary" disabled={!accepted} onClick={onAccept}>{t("nav.continue")}</button>
       </div>
     </div>
   );
 }
 
 function TermsScreen({ updateAppData, setScreen }) {
+  const { t } = useTranslation();
   return (
-    <LegalScreen title="Terms & Conditions" checkLabel="I have read and agree to the Terms & Conditions"
+    <LegalScreen title={t("terms.title")} checkLabel={t("terms.checkLabel")}
       onAccept={() => { updateAppData({ acceptedTerms: true }); setScreen("privacy"); }} setScreen={setScreen}>
-      <p className="legal-p"><strong>Effective Date:</strong> March 2026</p>
-      <p className="legal-p">Welcome to Cognify. By creating an account and using this application, you agree to the following terms.</p>
-      <h4 className="legal-h">1. Nature of the Service</h4>
-      <p className="legal-p">Cognify is a cognitive fitness application. It is <strong>not</strong> a medical device, diagnostic tool, or treatment for any disease. The exercises are based on the speed-of-processing intervention in the ACTIVE study (Coe et al., 2026), but Cognify has not been evaluated by the FDA or any regulatory body. We do not claim to prevent, treat, diagnose, or cure dementia or any other condition.</p>
-      <h4 className="legal-h">2. Not Medical Advice</h4>
-      <p className="legal-p">Nothing in this application constitutes medical advice. Consult your physician before beginning any cognitive training program. Statistics and benefit estimates are illustrative projections based on published research.</p>
-      <h4 className="legal-h">3. Eligibility</h4>
-      <p className="legal-p">You must be at least 18 years old to use Cognify.</p>
-      <h4 className="legal-h">4. Account Responsibility</h4>
-      <p className="legal-p">You are responsible for maintaining the confidentiality of your account credentials and for providing accurate information.</p>
-      <h4 className="legal-h">5. Intellectual Property</h4>
-      <p className="legal-p">All content, design, and code are the property of Cognify or its licensors. Our implementation is original.</p>
-      <h4 className="legal-h">6. Limitation of Liability</h4>
-      <p className="legal-p">Cognify is provided "as is" without warranties. We are not liable for damages arising from use, including health outcomes or data loss.</p>
-      <h4 className="legal-h">7. Modification & Termination</h4>
-      <p className="legal-p">We may update terms at any time. Continued use constitutes acceptance. You may delete your account at any time in Settings.</p>
-      <h4 className="legal-h">8. Governing Law</h4>
-      <p className="legal-p">Governed by applicable federal and state laws. Disputes resolved through binding arbitration.</p>
+      <p className="legal-p"><strong>{t("terms.effectiveDate")}</strong> {t("terms.effectiveDateValue")}</p>
+      <p className="legal-p">{t("terms.intro")}</p>
+      <h4 className="legal-h">{t("terms.s1.title")}</h4>
+      <p className="legal-p" dangerouslySetInnerHTML={{__html: t("terms.s1.body")}}/>
+      <h4 className="legal-h">{t("terms.s2.title")}</h4>
+      <p className="legal-p">{t("terms.s2.body")}</p>
+      <h4 className="legal-h">{t("terms.s3.title")}</h4>
+      <p className="legal-p">{t("terms.s3.body")}</p>
+      <h4 className="legal-h">{t("terms.s4.title")}</h4>
+      <p className="legal-p">{t("terms.s4.body")}</p>
+      <h4 className="legal-h">{t("terms.s5.title")}</h4>
+      <p className="legal-p">{t("terms.s5.body")}</p>
+      <h4 className="legal-h">{t("terms.s6.title")}</h4>
+      <p className="legal-p">{t("terms.s6.body")}</p>
+      <h4 className="legal-h">{t("terms.s7.title")}</h4>
+      <p className="legal-p">{t("terms.s7.body")}</p>
+      <h4 className="legal-h">{t("terms.s8.title")}</h4>
+      <p className="legal-p">{t("terms.s8.body")}</p>
     </LegalScreen>
   );
 }
 
 function PrivacyScreen({ updateAppData, setScreen }) {
+  const { t } = useTranslation();
   return (
-    <LegalScreen title="Privacy Policy" checkLabel="I have read and agree to the Privacy Policy"
+    <LegalScreen title={t("privacy.title")} checkLabel={t("privacy.checkLabel")}
       onAccept={() => { updateAppData({ acceptedPrivacy: true }); setScreen("consent"); }} setScreen={setScreen}>
-      <p className="legal-p"><strong>Effective Date:</strong> March 2026</p>
-      <h4 className="legal-h">1. Information We Collect</h4>
-      <p className="legal-p"><strong>Account:</strong> Username and a securely hashed password. We never store your password in plain text. <strong>Training:</strong> Speed thresholds, accuracy, reaction times. <strong>Preferences:</strong> Age group, theme, schedule.</p>
-      <h4 className="legal-h">2. Use of Data</h4>
-      <p className="legal-p">To provide personalized training, track progress, and calculate comparisons. We do not sell personal data.</p>
-      <h4 className="legal-h">3. Security</h4>
-      <p className="legal-p">Data encrypted at rest and in transit. HIPAA-compliant handling where applicable. SOC 2 Type II standards.</p>
-      <h4 className="legal-h">4. Deletion</h4>
-      <p className="legal-p">Delete your account and all data anytime via Settings. Removal is permanent and immediate.</p>
-      <h4 className="legal-h">5. Research Use</h4>
-      <p className="legal-p">With separate consent, anonymized aggregate data may contribute to research. No individual is identifiable.</p>
-      <h4 className="legal-h">6. Your Rights</h4>
-      <p className="legal-p">Access, correct, delete, or export your data. Contact privacy@cognify.app.</p>
-      <h4 className="legal-h">7. Children</h4>
-      <p className="legal-p">Not intended for individuals under 18. We do not knowingly collect data from minors.</p>
+      <p className="legal-p"><strong>{t("privacy.effectiveDate")}</strong> {t("privacy.effectiveDateValue")}</p>
+      <h4 className="legal-h">{t("privacy.s1.title")}</h4>
+      <p className="legal-p" dangerouslySetInnerHTML={{__html: t("privacy.s1.body")}}/>
+      <h4 className="legal-h">{t("privacy.s2.title")}</h4>
+      <p className="legal-p">{t("privacy.s2.body")}</p>
+      <h4 className="legal-h">{t("privacy.s3.title")}</h4>
+      <p className="legal-p">{t("privacy.s3.body")}</p>
+      <h4 className="legal-h">{t("privacy.s4.title")}</h4>
+      <p className="legal-p">{t("privacy.s4.body")}</p>
+      <h4 className="legal-h">{t("privacy.s5.title")}</h4>
+      <p className="legal-p">{t("privacy.s5.body")}</p>
+      <h4 className="legal-h">{t("privacy.s6.title")}</h4>
+      <p className="legal-p">{t("privacy.s6.body")}</p>
+      <h4 className="legal-h">{t("privacy.s7.title")}</h4>
+      <p className="legal-p">{t("privacy.s7.body")}</p>
     </LegalScreen>
   );
 }
 
 function ConsentScreen({ updateAppData, setScreen }) {
+  const { t } = useTranslation();
   const [researchConsent, setResearchConsent] = useState(false);
   return (
     <div className="screen flex-col">
       <GlobalHeader setScreen={setScreen}/>
       <div className="app-content flex-col" style={{flex:1,padding:"16px 0 32px"}}>
-        <h2 className="heading-lg mb-md">Data & Research Consent</h2>
+        <h2 className="heading-lg mb-md">{t("consent.title")}</h2>
         <div className="legal-scroll mb-md">
-          <p className="legal-p">Before you begin training, please review the following.</p>
-          <h4 className="legal-h">Required: Training Data</h4>
-          <p className="legal-p">Cognify must collect performance data to function. The adaptive algorithm depends on your accuracy and speed to adjust difficulty in real time.</p>
-          <h4 className="legal-h">Optional: Anonymized Research</h4>
-          <p className="legal-p">You may allow anonymized, de-identified data to contribute to cognitive science research. Your identity is never included. You can withdraw anytime in Settings.</p>
+          <p className="legal-p">{t("consent.intro")}</p>
+          <h4 className="legal-h">{t("consent.required.title")}</h4>
+          <p className="legal-p">{t("consent.required.body")}</p>
+          <h4 className="legal-h">{t("consent.optional.title")}</h4>
+          <p className="legal-p">{t("consent.optional.body")}</p>
         </div>
         <label className="consent-check">
           <input type="checkbox" checked={researchConsent} onChange={e => setResearchConsent(e.target.checked)}/>
-          <span>I consent to anonymized research use <span style={{color:"var(--text-muted)"}}>(optional)</span></span>
+          <span>{t("consent.checkbox")} <span style={{color:"var(--text-muted)"}}>{t("consent.checkboxOptional")}</span></span>
         </label>
         <button className="btn btn-primary" onClick={() => { updateAppData({ researchConsent }); setScreen("onboarding"); }}>
-          Continue to Setup
+          {t("consent.continue")}
         </button>
-        <p className="text-small text-center mt-md">You can change this anytime in Settings.</p>
+        <p className="text-small text-center mt-md">{t("consent.changeAnytime")}</p>
       </div>
     </div>
   );
@@ -1368,6 +1400,7 @@ function ConsentScreen({ updateAppData, setScreen }) {
    ONBOARDING
    ═══════════════════════════════════════════════════════════ */
 function OnboardingScreen({ appData, updateAppData, setScreen }) {
+  const { t } = useTranslation();
   const isRetake = (appData.sessions || []).length > 0;
   const [step, setStep] = useState(isRetake ? 1 : 0);
   const [ageGroup, setAgeGroup] = useState(appData.ageGroup || "60–69");
@@ -1375,42 +1408,45 @@ function OnboardingScreen({ appData, updateAppData, setScreen }) {
 
   const handleBaselineComplete = (trials) => {
     const correct = trials.filter(t => t.correct);
+    const norm = AGE_NORMS[ageGroup] || AGE_NORMS["60–69"];
     const threshold = correct.length > 0
       ? Math.round(correct.reduce((sum, t) => sum + t.displayTime, 0) / correct.length)
-      : INITIAL_DISPLAY_TIME;
+      : norm;
     setBaselineResult(threshold);
     setStep(2);
   };
 
   const finishOnboarding = () => {
+    const norm = AGE_NORMS[ageGroup] || AGE_NORMS["60–69"];
     updateAppData({
       onboarded: true, baseline: baselineResult, ageGroup,
-      lastThresholds: { ...appData.lastThresholds, 1: baselineResult || INITIAL_DISPLAY_TIME },
+      lastThresholds: { ...appData.lastThresholds, 1: baselineResult || norm },
     });
     setScreen("dashboard");
   };
 
   if (step === 0) {
-    const fact = RESEARCH_FACTS[0];
+    const fact = getResearchFact(t, 0);
     return (
       <div className="screen flex-col">
         <GlobalHeader setScreen={setScreen}/>
         <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"20px 0"}}>
         <div className="app-content text-center animate-in" style={{maxWidth:440}}>
           <div className="stat-giant mb-sm">25%</div>
-          <p style={{fontSize:19,color:"var(--text-secondary)",marginBottom:22}}>lower dementia risk</p>
+          <p style={{fontSize:19,color:"var(--text-secondary)",marginBottom:4}}>{t("onboarding.lowerDementiaRisk")}</p>
+          <p className="text-small" style={{color:"var(--text-muted)",marginBottom:22}}>{t("onboarding.riskContext")}</p>
           <div className="badge-row mb-lg">
-            {["2,802 participants","20 years","Johns Hopkins · NIH"].map(b => <span key={b} className="badge">{b}</span>)}
+            {[t("onboarding.participants"), t("onboarding.twentyYears"), t("onboarding.institution")].map(b => <span key={b} className="badge">{b}</span>)}
           </div>
           <p className="text-body mb-md" style={{fontSize:16}}>
-            The ACTIVE study is the first randomized trial showing any intervention can reduce dementia incidence over two decades. Only adaptive speed training produced this result.
+            {t("onboarding.description")}
           </p>
           <div className="citation mb-lg" style={{textAlign:"left"}}>
             <div className="citation-source">{fact.source}</div>
             <div className="citation-inst">{fact.institution}</div>
           </div>
           <div className="mb-lg">
-            <label style={{fontSize:16,color:"var(--text-secondary)",display:"block",marginBottom:10}}>Your age group:</label>
+            <label style={{fontSize:16,color:"var(--text-secondary)",display:"block",marginBottom:10}}>{t("onboarding.ageGroupLabel")}</label>
             <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center"}}>
               {Object.keys(AGE_NORMS).map(ag => (
                 <button key={ag} className="btn" onClick={() => setAgeGroup(ag)} style={{
@@ -1421,8 +1457,13 @@ function OnboardingScreen({ appData, updateAppData, setScreen }) {
                 }}>{ag}</button>
               ))}
             </div>
+            {["18–29","30–39","40–49","50–59"].includes(ageGroup) && (
+              <p className="text-small" style={{color:"var(--text-muted)", marginTop:12, lineHeight:1.6}}>
+                {t("onboarding.ageDisclaimer")}
+              </p>
+            )}
           </div>
-          <button className="btn btn-primary" onClick={() => setStep(1)}>Take Baseline Assessment</button>
+          <button className="btn btn-primary" onClick={() => setStep(1)}>{t("onboarding.takeBaseline")}</button>
         </div>
         </div>
       </div>
@@ -1432,30 +1473,30 @@ function OnboardingScreen({ appData, updateAppData, setScreen }) {
   if (step === 1) return <BaselineAssessment onComplete={handleBaselineComplete} setScreen={setScreen} />;
 
   const norm = AGE_NORMS[ageGroup] || 290;
-  const vsAverage = baselineResult < norm ? `${norm - baselineResult}ms faster than average` : baselineResult > norm ? `${baselineResult - norm}ms slower than average` : "Right at average";
+  const vsAverage = baselineResult < norm ? t("baseline.results.fasterThanAvg", {ms: norm - baselineResult}) : baselineResult > norm ? t("baseline.results.slowerThanAvg", {ms: baselineResult - norm}) : t("baseline.results.atAverage");
   return (
     <div className="screen flex-col">
       <GlobalHeader setScreen={setScreen}/>
       <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",padding:"20px 0"}}>
       <div className="app-content text-center animate-in" style={{maxWidth:420}}>
-        <h2 className="heading-lg mb-lg">Your Baseline</h2>
+        <h2 className="heading-lg mb-lg">{t("baseline.results.title")}</h2>
         <div className="card mb-md" style={{padding:28}}>
           <div className="stat-large">{baselineResult}<span className="stat-unit">ms</span></div>
-          <div className="text-body mt-sm">Processing Speed</div>
+          <div className="text-body mt-sm">{t("baseline.results.processingSpeed")}</div>
         </div>
         <div className="flex-col gap-sm mb-md" style={{textAlign:"left"}}>
-          <div className="settings-row"><span>Average for {ageGroup}</span><span style={{fontWeight:600}}>{norm}ms</span></div>
-          <div className="settings-row"><span>Compared to average</span><span style={{fontWeight:600,color:baselineResult<=norm?"var(--accent)":"var(--gold)"}}>{vsAverage}</span></div>
+          <div className="settings-row"><span>{t("baseline.results.averageFor", {ageGroup})}</span><span style={{fontWeight:600}}>{norm}ms</span></div>
+          <div className="settings-row"><span>{t("baseline.results.comparedToAvg")}</span><span style={{fontWeight:600,color:baselineResult<=norm?"var(--accent)":"var(--gold)"}}>{vsAverage}</span></div>
         </div>
         <div className="card mb-md" style={{display:"flex",alignItems:"center",gap:14,textAlign:"left"}}>
           <span style={{fontSize:28}}>📅</span>
           <div>
-            <div className="heading-sm">Recommended Schedule</div>
-            <div className="text-body" style={{fontSize:17,marginTop:3}}>3 sessions per week, about 12 minutes each</div>
+            <div className="heading-sm">{t("baseline.results.recommendedSchedule")}</div>
+            <div className="text-body" style={{fontSize:17,marginTop:3}}>{t("baseline.results.scheduleDetail")}</div>
           </div>
         </div>
         <ResearchSnippet />
-        <button className="btn btn-primary mt-lg" onClick={finishOnboarding}>Start Training</button>
+        <button className="btn btn-primary mt-lg" onClick={finishOnboarding}>{t("baseline.results.startTraining")}</button>
       </div>
       </div>
     </div>
@@ -1465,26 +1506,28 @@ function OnboardingScreen({ appData, updateAppData, setScreen }) {
 /* ═══════════════════════════════════════════════════════════
    BASELINE ASSESSMENT (also used in training)
    ═══════════════════════════════════════════════════════════ */
-function BaselineAssessment({ onComplete, setScreen }) {
+function BaselineAssessment({ onComplete, setScreen, ageGroup }) {
+  const { t } = useTranslation();
   const [phase, setPhase] = useState("intro");
+  const startTime = AGE_NORMS[ageGroup] || AGE_NORMS["60–69"];
   return phase === "intro" ? (
     <div className="screen flex-col">
       {setScreen && <GlobalHeader setScreen={setScreen}/>}
       <div className="screen-centered" style={{minHeight:"auto",flex:1}}>
         <div className="app-content text-center animate-in" style={{maxWidth:420}}>
-          <h2 className="heading-lg mb-sm">Baseline Assessment</h2>
-          <p className="text-body mb-md">Let's measure your current processing speed.</p>
+          <h2 className="heading-lg mb-sm">{t("baseline.title")}</h2>
+          <p className="text-body mb-md">{t("baseline.subtitle")}</p>
           <div className="card mb-lg" style={{textAlign:"left"}}>
-            <p style={{fontSize:18,color:"var(--text)",lineHeight:1.7}}>Two reference shapes will appear. One flashes briefly in the center. Tap which one you saw.</p>
-            <p className="text-small mt-sm">{BASELINE_TRIAL_COUNT} trials · Gets faster as you improve</p>
+            <p style={{fontSize:18,color:"var(--text)",lineHeight:1.7}}>{t("baseline.instructions")}</p>
+            <p className="text-small mt-sm">{t("baseline.trialInfo", {count: BASELINE_TRIAL_COUNT})}</p>
           </div>
-          <button className="btn btn-primary" onClick={() => setPhase("running")}>Begin</button>
+          <button className="btn btn-primary" onClick={() => setPhase("running")}>{t("baseline.begin")}</button>
         </div>
       </div>
     </div>
   ) : (
     <TrialRunner trialsPerBlock={BASELINE_TRIAL_COUNT} blocks={1} exerciseType={1}
-      startingDisplayTime={INITIAL_DISPLAY_TIME} onSessionComplete={(trials) => onComplete(trials)}
+      startingDisplayTime={startTime} onSessionComplete={(trials) => onComplete(trials)}
       onExit={setScreen ? () => setScreen("dashboard") : undefined} setScreen={setScreen} />
   );
 }
@@ -1494,6 +1537,7 @@ function BaselineAssessment({ onComplete, setScreen }) {
    Isolated component with its own state management
    ═══════════════════════════════════════════════════════════ */
 function TrialRunner({ trialsPerBlock, blocks, exerciseType, startingDisplayTime, onSessionComplete, onExit, setScreen }) {
+  const { t } = useTranslation();
   const [block, setBlock] = useState(0);
   const [trialIndex, setTrialIndex] = useState(0);
   const [displayTime, setDisplayTime] = useState(startingDisplayTime);
@@ -1533,13 +1577,15 @@ function TrialRunner({ trialsPerBlock, blocks, exerciseType, startingDisplayTime
 
     setTimeout(() => {
       setStimulusVisible(true);
-      responseTimeRef.current = performance.now();
-      const framesNeeded = Math.max(1, Math.round(displayTime / 16.67));
-      let frameCount = 0;
+      const stimulusStart = performance.now();
+      responseTimeRef.current = stimulusStart;
       function tick() {
-        frameCount++;
-        if (frameCount >= framesNeeded) { setStimulusVisible(false); setAwaitingResponse(true); }
-        else requestAnimationFrame(tick);
+        if (performance.now() - stimulusStart >= displayTime) {
+          setStimulusVisible(false);
+          setAwaitingResponse(true);
+        } else {
+          requestAnimationFrame(tick);
+        }
       }
       requestAnimationFrame(tick);
     }, 600);
@@ -1604,7 +1650,7 @@ function TrialRunner({ trialsPerBlock, blocks, exerciseType, startingDisplayTime
       if (nextTotalDone > 0 && nextTotalDone % 10 === 0) {
         setTimeout(() => {
           setTrialIndex(nextTrialIndex);
-          setMicrobreakFact(randomMidBreak());
+          setMicrobreakFact(getMidBreak(t, randomMidBreakIndex()));
           setMicrobreakCountdown(5);
           setPhase("microbreak");
         }, 500);
@@ -1654,9 +1700,9 @@ function TrialRunner({ trialsPerBlock, blocks, exerciseType, startingDisplayTime
               <p className="text-serif" style={{fontSize:18,color:"var(--text-secondary)",lineHeight:1.8,margin:0}}>{microbreakFact.text}</p>
               <div className="text-small mt-sm" style={{fontStyle:"italic",color:"var(--accent)"}}>{microbreakFact.source}</div>
             </div>
-            <p className="text-body">Continuing in {microbreakCountdown}s…</p>
+            <p className="text-body">{t("trial.continueIn", {seconds: microbreakCountdown})}</p>
             <button className="btn btn-secondary mt-md" onClick={() => { setPhase("trial"); setFeedback(null); }}
-              style={{maxWidth:200,margin:"16px auto 0"}}>Continue Now</button>
+              style={{maxWidth:200,margin:"16px auto 0"}}>{t("trial.continueNow")}</button>
           </div>
         </div>
       </div>
@@ -1666,25 +1712,25 @@ function TrialRunner({ trialsPerBlock, blocks, exerciseType, startingDisplayTime
   // ── Between blocks screen ──
   if (phase === "between") {
     const blockAccuracy = blockTrials.length > 0 ? Math.round((blockTrials.filter(t => t.correct).length / blockTrials.length) * 100) : 0;
-    const betweenMsg = randomBetweenBlock();
+    const betweenMsg = getBetweenBlockMsg(t, randomBetweenBlockIndex());
     return (
       <div className="screen flex-col">
         {setScreen && <GlobalHeader setScreen={setScreen}/>}
         <SessionProgressBar current={(block + 1) * trialsPerBlock} total={totalSessionTrials}/>
         <div className="screen-centered" style={{minHeight:"auto",flex:1}}>
           <div className="text-center animate-in" style={{maxWidth:420,padding:"0 20px"}}>
-            <h3 className="heading-lg text-accent mb-lg">Block {block + 1} Complete</h3>
+            <h3 className="heading-lg text-accent mb-lg">{t("trial.blockComplete", {n: block + 1})}</h3>
             <div className="grid-2 mb-md" style={{display:"flex",gap:28,justifyContent:"center"}}>
-              <div className="text-center"><div className="stat-medium">{blockAccuracy}%</div><div className="text-small">Accuracy</div></div>
-              <div className="text-center"><div className="stat-medium">{displayTime}ms</div><div className="text-small">Speed</div></div>
+              <div className="text-center"><div className="stat-medium">{blockAccuracy}%</div><div className="text-small">{t("trial.accuracy")}</div></div>
+              <div className="text-center"><div className="stat-medium">{displayTime}ms</div><div className="text-small">{t("trial.speed")}</div></div>
             </div>
             <div className="card card-highlight mb-md" style={{textAlign:"left"}}>
               <p style={{fontSize:18,color:"var(--accent)",fontWeight:600,lineHeight:1.6,marginBottom:10}}>{betweenMsg.encouragement}</p>
               <p className="text-serif" style={{fontSize:17,color:"var(--text-secondary)",lineHeight:1.7,margin:0}}>{betweenMsg.fact}</p>
               <div className="text-small mt-sm" style={{fontStyle:"italic"}}>{betweenMsg.source}</div>
             </div>
-            <p className="text-body mb-md">Block {block + 2} begins in {countdown}s.</p>
-            <button className="btn btn-secondary" onClick={advanceBlock} style={{maxWidth:200,margin:"0 auto"}}>Start Now</button>
+            <p className="text-body mb-md">{t("trial.nextBlockIn", {n: block + 2, seconds: countdown})}</p>
+            <button className="btn btn-secondary" onClick={advanceBlock} style={{maxWidth:200,margin:"0 auto"}}>{t("trial.startNow")}</button>
           </div>
         </div>
       </div>
@@ -1698,7 +1744,7 @@ function TrialRunner({ trialsPerBlock, blocks, exerciseType, startingDisplayTime
     <div className="screen-trial">
       {setScreen && <GlobalHeader setScreen={setScreen} rightContent={
         !confirmExit ? (
-          <button className="btn btn-ghost" onClick={() => setConfirmExit(true)} style={{color:"var(--text-muted)"}}>Exit</button>
+          <button className="btn btn-ghost" onClick={() => setConfirmExit(true)} style={{color:"var(--text-muted)"}}>{t("trial.exit")}</button>
         ) : null
       }/>}
       <SessionProgressBar current={completedTrials} total={totalSessionTrials} label={false}/>
@@ -1707,10 +1753,10 @@ function TrialRunner({ trialsPerBlock, blocks, exerciseType, startingDisplayTime
       {confirmExit && (
         <div className="app-content mb-sm">
           <div className="card" style={{borderColor:"var(--incorrect)",padding:16}}>
-            <p style={{fontSize:16,color:"var(--text)",marginBottom:10,lineHeight:1.5}}>End this session early? Progress will not be saved.</p>
+            <p style={{fontSize:16,color:"var(--text)",marginBottom:10,lineHeight:1.5}}>{t("trial.exitConfirm")}</p>
             <div style={{display:"flex",gap:10}}>
-              <button className="btn btn-secondary" style={{flex:1,padding:12,fontSize:16}} onClick={() => setConfirmExit(false)}>Keep Going</button>
-              <button className="btn btn-primary" style={{flex:1,padding:12,fontSize:16,background:"var(--incorrect)"}} onClick={onExit}>End Session</button>
+              <button className="btn btn-secondary" style={{flex:1,padding:12,fontSize:16}} onClick={() => setConfirmExit(false)}>{t("trial.keepGoing")}</button>
+              <button className="btn btn-primary" style={{flex:1,padding:12,fontSize:16,background:"var(--incorrect)"}} onClick={onExit}>{t("trial.endSession")}</button>
             </div>
           </div>
         </div>
@@ -1718,8 +1764,8 @@ function TrialRunner({ trialsPerBlock, blocks, exerciseType, startingDisplayTime
 
       <div className="app-content flex-col" style={{flex:1,minHeight:0,paddingBottom:24}}>
         <div className="flex-between" style={{marginBottom:8}}>
-          <span style={{fontSize:16,fontWeight:600,color:"var(--text-secondary)"}}>Trial {trialIndex + 1}/{trialsPerBlock}</span>
-          {blocks > 1 && <span style={{fontSize:14,color:"var(--text-muted)"}}>Block {block + 1}/{blocks}</span>}
+          <span style={{fontSize:16,fontWeight:600,color:"var(--text-secondary)"}}>{t("trial.trialCount", {current: trialIndex + 1, total: trialsPerBlock})}</span>
+          {blocks > 1 && <span style={{fontSize:14,color:"var(--text-muted)"}}>{t("trial.blockCount", {current: block + 1, total: blocks})}</span>}
           <span style={{fontSize:15,color:"var(--accent)",fontFamily:"monospace",fontWeight:600}}>{displayTime}ms</span>
         </div>
 
@@ -1728,7 +1774,7 @@ function TrialRunner({ trialsPerBlock, blocks, exerciseType, startingDisplayTime
           {currentPair.map(key => (
             <div key={key} className="text-center">
               <ShapeIcon shapeKey={key} size={40}/>
-              <div style={{fontSize:13,color:"var(--text-muted)",marginTop:2}}>{SHAPE_DEFINITIONS[key].name}</div>
+              <div style={{fontSize:13,color:"var(--text-muted)",marginTop:2}}>{t("shape." + key)}</div>
             </div>
           ))}
         </div>
@@ -1759,11 +1805,11 @@ function TrialRunner({ trialsPerBlock, blocks, exerciseType, startingDisplayTime
         {/* Response area — compact, no scroll */}
         {awaitingResponse && responseStep === "central" && (
           <div style={{marginTop:10,flexShrink:0}}>
-            <p style={{fontSize:17,color:"var(--text-secondary)",textAlign:"center",marginBottom:10}}>Which shape?</p>
+            <p style={{fontSize:17,color:"var(--text-secondary)",textAlign:"center",marginBottom:10}}>{t("trial.whichShape")}</p>
             <div style={{display:"flex",justifyContent:"center",gap:14}}>
               {currentPair.map(key => (
                 <button key={key} className="btn btn-choice" onClick={() => handleCentralResponse(key)} style={{padding:"14px 28px",minWidth:120}}>
-                  <ShapeIcon shapeKey={key} size={44}/><span style={{fontSize:15,color:"var(--text-secondary)"}}>{SHAPE_DEFINITIONS[key].name}</span>
+                  <ShapeIcon shapeKey={key} size={44}/><span style={{fontSize:15,color:"var(--text-secondary)"}}>{t("shape." + key)}</span>
                 </button>
               ))}
             </div>
@@ -1771,10 +1817,10 @@ function TrialRunner({ trialsPerBlock, blocks, exerciseType, startingDisplayTime
         )}
         {awaitingResponse && responseStep === "peripheral" && (
           <div style={{marginTop:10,flexShrink:0}}>
-            <p style={{fontSize:17,color:"var(--text-secondary)",textAlign:"center",marginBottom:10}}>Where was the ▲?</p>
+            <p style={{fontSize:17,color:"var(--text-secondary)",textAlign:"center",marginBottom:10}}>{t("trial.whereWasTriangle")}</p>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,maxWidth:320,margin:"0 auto"}}>
-              {PERIPHERAL_POSITIONS.map((pos, idx) => (
-                <button key={idx} className="btn btn-peripheral" onClick={() => handlePeripheralResponse(idx)} style={{padding:14,fontSize:15}}>{pos.label}</button>
+              {PERIPHERAL_DISPLAY_ORDER.map(origIdx => (
+                <button key={origIdx} className="btn btn-peripheral" onClick={() => handlePeripheralResponse(origIdx)} style={{padding:14,fontSize:15}}>{t("peripheral." + PERIPHERAL_POSITIONS[origIdx].labelKey)}</button>
               ))}
             </div>
           </div>
@@ -1788,18 +1834,17 @@ function TrialRunner({ trialsPerBlock, blocks, exerciseType, startingDisplayTime
    DASHBOARD
    ═══════════════════════════════════════════════════════════ */
 function DashboardScreen({ appData, updateAppData, setScreen }) {
-  const { mode, toggleTheme } = useContext(ThemeContext);
+  const { t } = useTranslation();
   const [selectedExercise, setSelectedExercise] = useState(appData.currentExercise || 1);
 
   const sessions = appData.sessions || [];
   const totalSessions = sessions.length;
-  const threshold = appData.lastThresholds[selectedExercise] || INITIAL_DISPLAY_TIME;
-  const baseline = appData.baseline || INITIAL_DISPLAY_TIME;
+  const ageNorm = AGE_NORMS[appData.ageGroup] || AGE_NORMS["60–69"];
+  const threshold = appData.lastThresholds[selectedExercise] || ageNorm;
+  const baseline = appData.baseline || ageNorm;
   const improvement = baseline - threshold;
   const improvementPercent = baseline > 0 ? Math.round((improvement / baseline) * 100) : 0;
-  const cognitiveBenefit = estimateCognitiveBenefit(totalSessions, Math.max(0, improvement));
-  const riskReduction = estimateRiskReduction(totalSessions, Math.max(0, improvement));
-  const impactMessage = getPersonalizedImpactMessage(sessions, improvement, baseline);
+  const impactMessage = getPersonalizedImpactMessage(t, sessions, improvement, baseline);
   const earnedBadges = getEarnedBadges(appData);
 
   const now = new Date();
@@ -1824,36 +1869,36 @@ function DashboardScreen({ appData, updateAppData, setScreen }) {
   return (
     <div className="screen screen-padded">
       <GlobalHeader setScreen={setScreen} rightContent={
-        <div style={{display:"flex",gap:8}}>
-          <button className="btn btn-icon" onClick={toggleTheme} title="Toggle theme" style={{width:"auto",padding:"10px 14px",fontSize:17,fontWeight:600}}>
-            {mode==="light"?"Dark":"Light"}
-          </button>
-          <button className="btn btn-icon" onClick={() => setScreen("settings")} title="Settings">⚙️</button>
-        </div>
+        <button className="btn btn-icon settings-btn" onClick={() => setScreen("settings")} title={t("nav.settings")}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       }/>
 
       <div className="app-content flex-col gap-md animate-in">
         {/* Primary metric */}
         <div className="card" style={{padding:26}}>
-          <div className="text-label mb-sm">Processing Speed</div>
+          <div className="text-label mb-sm">{t("dashboard.processingSpeed")}</div>
           <div className="flex-between" style={{alignItems:"baseline"}}>
             <div><span className="stat-large">{threshold}</span><span className="stat-unit">ms</span></div>
-            {improvement > 0 && <span style={{fontSize:17,fontWeight:600,color:"var(--accent)"}}>↓ {improvement}ms</span>}
+            {improvement > 0 && <span style={{fontSize:17,fontWeight:600,color:"var(--accent)"}}>{t("dashboard.improvement", {ms: improvement})}</span>}
           </div>
           <div className="progress-track mt-md">
             <div className="progress-fill" style={{width:`${Math.max(2, Math.min(100, improvementPercent * 2))}%`}}/>
           </div>
-          <div className="text-small mt-sm">{improvement > 0 ? `${improvementPercent}% faster than your baseline (${baseline}ms)` : `Baseline: ${baseline}ms — train to see your improvement`}</div>
+          <div className="text-small mt-sm">{improvement > 0 ? t("dashboard.fasterThanBaseline", {percent: improvementPercent, baseline}) : t("dashboard.baselinePrompt", {baseline})}</div>
         </div>
 
-        {/* Longevity card */}
+        {/* Protocol progress card */}
         {totalSessions > 0 && (
-          <div className="card card-gold" style={{display:"flex",alignItems:"center",gap:14}}>
-            <span style={{fontSize:30}}>🧠</span>
-            <div>
-              <div style={{fontSize:17,fontWeight:700,color:"var(--gold)"}}>+{cognitiveBenefit} years of cognitive health · ~{riskReduction}% risk reduction</div>
-              <div className="text-small" style={{marginTop:3}}>{totalSessions} session{totalSessions !== 1 ? "s" : ""} · {improvement > 0 ? `${improvement}ms faster` : "keep training"}</div>
+          <div className={totalSessions >= 14 ? "card card-gold" : "card card-highlight"} style={{padding:20}}>
+            <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:10}}>
+              <span style={{fontSize:30}}>🧠</span>
+              <div>
+                <div style={{fontSize:17,fontWeight:700,color:totalSessions >= 14 ? "var(--gold)" : "var(--text)"}}>{totalSessions >= 14 ? t("dashboard.protocolComplete") : t("dashboard.protocolProgress", {count: totalSessions})}</div>
+              </div>
             </div>
+            <div className="progress-track">
+              <div className="progress-fill" style={{width:`${Math.min(100, (totalSessions / 14) * 100)}%`}}/>
+            </div>
+            <div className="text-small mt-sm" style={{color:"var(--text-muted)",lineHeight:1.6}}>{t("dashboard.activeStudyFinding")}</div>
           </div>
         )}
 
@@ -1873,8 +1918,8 @@ function DashboardScreen({ appData, updateAppData, setScreen }) {
           <div className="card card-highlight" style={{display:"flex",alignItems:"center",gap:12}}>
             <span style={{fontSize:22}}>⏰</span>
             <div>
-              <div style={{fontSize:17,fontWeight:600,color:"var(--accent)"}}>Time for a booster session!</div>
-              <div className="text-small" style={{marginTop:2}}>It's been {daysSinceLastSession} days. The ACTIVE study found booster sessions were essential for lasting benefits.</div>
+              <div style={{fontSize:17,fontWeight:600,color:"var(--accent)"}}>{t("dashboard.boosterTitle")}</div>
+              <div className="text-small" style={{marginTop:2}}>{t("dashboard.boosterDetail", {days: daysSinceLastSession})}</div>
             </div>
           </div>
         )}
@@ -1882,16 +1927,17 @@ function DashboardScreen({ appData, updateAppData, setScreen }) {
         {/* Training card */}
         <div className="card" style={{padding:22}}>
           <div className="flex-between mb-md">
-            <span className="heading-sm" style={{fontSize:17}}>Today's Training</span>
-            <span className="text-small">Session {totalSessions + 1}</span>
+            <span className="heading-sm" style={{fontSize:17}}>{t("dashboard.todaysTraining")}</span>
+            <span className="text-small">{t("dashboard.sessionNumber", {n: totalSessions + 1})}</span>
           </div>
           <div className="exercise-grid mb-md">
             {[1, 2, 3].map(exerciseNumber => {
               const unlocked = appData.exerciseUnlocks[exerciseNumber];
-              const names = { 1: "Central ID", 2: "Divided Attention", 3: "Selective Attention" };
+              const names = { 1: t("dashboard.exercise.centralId"), 2: t("dashboard.exercise.dividedAttention"), 3: t("dashboard.exercise.selectiveAttention") };
               return (
                 <button key={exerciseNumber} className="exercise-option" data-selected={selectedExercise === exerciseNumber} data-locked={!unlocked}
-                  onClick={() => unlocked && setSelectedExercise(exerciseNumber)}>
+                  onClick={() => unlocked && setSelectedExercise(exerciseNumber)}
+                  title={!unlocked ? (exerciseNumber === 2 ? t("dashboard.unlockHint.ex2", {threshold: UNLOCK_EXERCISE_2_THRESHOLD}) : t("dashboard.unlockHint.ex3", {threshold: UNLOCK_EXERCISE_3_THRESHOLD})) : undefined}>
                   <div style={{fontSize:16,fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Ex {exerciseNumber}</div>
                   <div style={{fontSize:16,marginTop:3}}>{names[exerciseNumber]}</div>
                   {!unlocked && <div style={{fontSize:16,marginTop:2}}>🔒</div>}
@@ -1899,14 +1945,14 @@ function DashboardScreen({ appData, updateAppData, setScreen }) {
               );
             })}
           </div>
-          <button className="btn btn-start" onClick={startTraining}>▶ &nbsp;START SESSION</button>
-          <div className="text-small text-center mt-sm">~12 min · {selectedExercise === 1 ? EXERCISE_1_TRIALS_PER_BLOCK : selectedExercise === 2 ? EXERCISE_2_TRIALS_PER_BLOCK : EXERCISE_3_TRIALS_PER_BLOCK} trials × {BLOCKS_PER_SESSION} blocks</div>
+          <button className="btn btn-start" onClick={startTraining}>{t("dashboard.startSession")}</button>
+          <div className="text-small text-center mt-sm">{t("dashboard.sessionDetail", {label: SESSION_MODES[appData.sessionMode || "full"].label, trials: selectedExercise === 1 ? EXERCISE_1_TRIALS_PER_BLOCK : selectedExercise === 2 ? EXERCISE_2_TRIALS_PER_BLOCK : EXERCISE_3_TRIALS_PER_BLOCK, blocks: SESSION_MODES[appData.sessionMode || "full"].blocks})}</div>
         </div>
 
         {/* Weekly streak */}
         <div className="card">
           <div className="flex-between mb-md">
-            <span className="heading-sm">This Week</span>
+            <span className="heading-sm">{t("dashboard.thisWeek")}</span>
             <span style={{fontSize:16,fontWeight:700,color:"var(--accent)"}}>{weekSessions} / {appData.weeklyGoal}</span>
           </div>
           <div className="streak-dots">
@@ -1919,13 +1965,13 @@ function DashboardScreen({ appData, updateAppData, setScreen }) {
         {/* Milestone Badges */}
         {earnedBadges.length > 0 && (
           <div className="card">
-            <div className="heading-sm mb-md" style={{fontSize:15}}>Milestones</div>
+            <div className="heading-sm mb-md" style={{fontSize:15}}>{t("dashboard.milestones")}</div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
               {earnedBadges.map(badge => (
-                <div key={badge.id} title={badge.description} style={{display:"flex",alignItems:"center",gap:6,
+                <div key={badge.id} title={t("badge." + badge.id + ".description")} style={{display:"flex",alignItems:"center",gap:6,
                   padding:"6px 12px",background:"var(--accent-light)",border:"1px solid var(--accent-border)",
                   borderRadius:"var(--radius-sm)",fontSize:16,color:"var(--accent)",fontWeight:500}}>
-                  <span>{badge.icon}</span> {badge.name}
+                  <span>{badge.icon}</span> {t("badge." + badge.id + ".name")}
                 </div>
               ))}
             </div>
@@ -1935,12 +1981,12 @@ function DashboardScreen({ appData, updateAppData, setScreen }) {
         {/* Trend chart */}
         {recentTrend.length > 1 && (
           <div className="card" style={{paddingBottom:10}}>
-            <div className="heading-sm mb-sm" style={{fontSize:15}}>Recent Trend</div>
+            <div className="heading-sm mb-sm" style={{fontSize:15}}>{t("dashboard.recentTrend")}</div>
             <ResponsiveContainer width="100%" height={110}>
               <LineChart data={recentTrend}>
                 <Line type="monotone" dataKey="speed" stroke="var(--chart-line)" strokeWidth={2} dot={false}/>
                 <YAxis hide domain={['dataMin-20','dataMax+20']} reversed/>
-                <Tooltip contentStyle={ChartTooltipStyle()} formatter={v => [`${v}ms`, 'Speed']}/>
+                <Tooltip contentStyle={ChartTooltipStyle()} formatter={v => [`${v}ms`, t("chart.speed")]}/>
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -1958,20 +2004,27 @@ function DashboardScreen({ appData, updateAppData, setScreen }) {
    TRAINING SESSION
    ═══════════════════════════════════════════════════════════ */
 function TrainingSession({ appData, updateAppData, setScreen }) {
+  const { t } = useTranslation();
   const exercise = appData.currentExercise || 1;
   const trialsPerBlock = exercise === 1 ? EXERCISE_1_TRIALS_PER_BLOCK : exercise === 2 ? EXERCISE_2_TRIALS_PER_BLOCK : EXERCISE_3_TRIALS_PER_BLOCK;
   const [started, setStarted] = useState(false);
-  const startingTime = Math.round((appData.lastThresholds[exercise] || INITIAL_DISPLAY_TIME) * 0.9);
-  const exerciseNames = { 1: "Central Identification", 2: "Divided Attention", 3: "Selective Attention" };
+  const [sessionMode, setSessionMode] = useState(appData.sessionMode || "full");
+  const ageNorm = AGE_NORMS[appData.ageGroup] || AGE_NORMS["60–69"];
+  const startingTime = Math.round((appData.lastThresholds[exercise] || ageNorm) * 0.9);
+  const exerciseNames = { 1: t("training.centralId"), 2: t("training.dividedAttention"), 3: t("training.selectiveAttention") };
+  const mode = SESSION_MODES[sessionMode];
+  const sessionStartRef = useRef(null);
 
   const handleSessionComplete = (trials, finalDisplayTime) => {
     const correctCount = trials.filter(t => t.correct).length;
     const accuracy = trials.length > 0 ? correctCount / trials.length : 0;
     const avgReactionTime = trials.length > 0 ? Math.round(trials.reduce((s, t) => s + t.reactionTime, 0) / trials.length) : 0;
+    const elapsedMinutes = sessionStartRef.current ? Math.round((Date.now() - sessionStartRef.current) / 60000) : mode.minutes;
 
     const session = {
       date: new Date().toISOString(), exercise, threshold: finalDisplayTime,
       accuracy, avgReactionTime, trialsCompleted: trials.length, correctCount,
+      durationMinutes: Math.max(1, elapsedMinutes),
     };
     updateAppData({
       sessions: [...(appData.sessions || []), session],
@@ -1981,43 +2034,57 @@ function TrainingSession({ appData, updateAppData, setScreen }) {
     setScreen("summary");
   };
 
+  const handleStart = () => {
+    updateAppData({ sessionMode });
+    sessionStartRef.current = Date.now();
+    setStarted(true);
+  };
+
   if (!started) {
     return (
       <div className="screen flex-col">
         <GlobalHeader setScreen={setScreen} rightContent={
-          <button className="btn btn-ghost" onClick={() => setScreen("dashboard")}>Back</button>
+          <button className="btn btn-ghost" onClick={() => setScreen("dashboard")}>{t("nav.back")}</button>
         }/>
         <div className="screen-centered" style={{minHeight:"auto",flex:1}}>
           <div className="app-content text-center animate-in" style={{maxWidth:420}}>
-            <div className="text-label mb-sm">Exercise {exercise}</div>
+            <div className="text-label mb-sm">{t("training.exercise", {n: exercise})}</div>
             <h2 className="heading-lg mb-md">{exerciseNames[exercise]}</h2>
-            <div className="card mb-lg" style={{textAlign:"left"}}>
+            <div className="card mb-md" style={{textAlign:"left"}}>
               {exercise === 1 ? (
-                <>
-                  <p style={{fontSize:18,color:"var(--text)",lineHeight:1.7}}>Two shapes appear as reference. One flashes in the center — tap which one you saw.</p>
-                  <p className="text-small mt-sm">{trialsPerBlock} trials × {BLOCKS_PER_SESSION} blocks</p>
-                </>
+                <p style={{fontSize:18,color:"var(--text)",lineHeight:1.7}}>{t("training.ex1.instructions")}</p>
               ) : exercise === 2 ? (
-                <>
-                  <p style={{fontSize:18,color:"var(--text)",lineHeight:1.7}}>Identify the center shape <strong>and</strong> spot where the triangle (▲) appears. Both must be correct.</p>
-                  <p className="text-small mt-sm">{trialsPerBlock} trials × {BLOCKS_PER_SESSION} blocks</p>
-                </>
+                <p style={{fontSize:18,color:"var(--text)",lineHeight:1.7}} dangerouslySetInnerHTML={{__html: t("training.ex2.instructions")}}/>
               ) : (
-                <>
-                  <p style={{fontSize:18,color:"var(--text)",lineHeight:1.7}}>Same as Exercise 2, but with <strong>distractors</strong> — similar shapes scattered near the target. Find the real ▲ among the noise.</p>
-                  <p className="text-small mt-sm">{trialsPerBlock} trials × {BLOCKS_PER_SESSION} blocks · This mirrors the hardest phase of the ACTIVE study.</p>
-                </>
+                <p style={{fontSize:18,color:"var(--text)",lineHeight:1.7}} dangerouslySetInnerHTML={{__html: t("training.ex3.instructions")}}/>
               )}
             </div>
-            <div className="text-small mb-lg" style={{fontFamily:"monospace"}}>Starting speed: {startingTime}ms</div>
-            <button className="btn btn-primary" onClick={() => setStarted(true)}>Begin</button>
+
+            {/* Session length selector */}
+            <div className="card mb-md" style={{textAlign:"left"}}>
+              <div style={{fontSize:15,fontWeight:600,color:"var(--text-secondary)",marginBottom:10}}>{t("training.sessionLength")}</div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {Object.entries(SESSION_MODES).map(([key, m]) => (
+                  <button key={key} className="btn" onClick={() => setSessionMode(key)} style={{
+                    flex:1,padding:"12px 10px",fontSize:15,borderRadius:"var(--radius-sm)",textAlign:"center",
+                    border: sessionMode===key ? "1.5px solid var(--accent-border)" : "1.5px solid var(--border)",
+                    background: sessionMode===key ? "var(--accent-light)" : "transparent",
+                    color: sessionMode===key ? "var(--accent)" : "var(--text-secondary)",
+                  }}>{m.label}</button>
+                ))}
+              </div>
+              <p className="text-small mt-sm">{t("training.trialDetail", {trials: trialsPerBlock, blocks: mode.blocks})}{sessionMode === "full" ? t("training.fullProtocolNote") : ""}</p>
+            </div>
+
+            <div className="text-small mb-lg" style={{fontFamily:"monospace"}}>{t("training.startingSpeed", {ms: startingTime})}</div>
+            <button className="btn btn-primary" onClick={handleStart}>{t("training.begin")}</button>
           </div>
         </div>
       </div>
     );
   }
 
-  return <TrialRunner trialsPerBlock={trialsPerBlock} blocks={BLOCKS_PER_SESSION} exerciseType={exercise}
+  return <TrialRunner trialsPerBlock={trialsPerBlock} blocks={mode.blocks} exerciseType={exercise}
     startingDisplayTime={startingTime} onSessionComplete={handleSessionComplete}
     onExit={() => setScreen("dashboard")} setScreen={setScreen}/>;
 }
@@ -2026,15 +2093,27 @@ function TrainingSession({ appData, updateAppData, setScreen }) {
    SESSION SUMMARY
    ═══════════════════════════════════════════════════════════ */
 function SessionSummary({ appData, updateAppData, setScreen }) {
+  const { t } = useTranslation();
   const session = appData._lastSession;
   if (!session) { setScreen("dashboard"); return null; }
 
-  const totalSessions = appData.sessions.length;
-  const improvement = (appData.baseline || INITIAL_DISPLAY_TIME) - session.threshold;
-  const cognitiveBenefit = estimateCognitiveBenefit(totalSessions, Math.max(0, improvement));
-  const riskReduction = estimateRiskReduction(totalSessions, Math.max(0, improvement));
-  const impactMsg = getPersonalizedImpactMessage(appData.sessions, improvement, appData.baseline || INITIAL_DISPLAY_TIME);
-  const [fact] = useState(randomFact);
+  const sessions = appData.sessions || [];
+  const totalSessions = sessions.length;
+  const ageNorm = AGE_NORMS[appData.ageGroup] || AGE_NORMS["60–69"];
+  const improvement = (appData.baseline || ageNorm) - session.threshold;
+  const impactMsg = getPersonalizedImpactMessage(t, appData.sessions, improvement, appData.baseline || ageNorm);
+  const [factIdx] = useState(randomFactIndex);
+  const fact = getResearchFact(t, factIdx);
+  const [encouragementIdx] = useState(randomEncouragementIndex);
+  const encouragement = getEncouragement(t, encouragementIdx);
+
+  // Detect newly earned badges by comparing before/after this session
+  const [newBadges] = useState(() => {
+    const prevData = { ...appData, sessions: sessions.slice(0, -1) };
+    const prevBadges = getEarnedBadges(prevData);
+    const currentBadges = getEarnedBadges(appData);
+    return currentBadges.filter(b => !prevBadges.find(p => p.id === b.id));
+  });
 
   return (
     <div className="screen flex-col">
@@ -2042,19 +2121,19 @@ function SessionSummary({ appData, updateAppData, setScreen }) {
       <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",padding:"24px 20px"}}>
       <div className="app-content text-center animate-in" style={{maxWidth:440}}>
         <div style={{fontSize:56,color:"var(--correct)",marginBottom:8}}>✓</div>
-        <h2 className="heading-lg mb-lg">Session Complete</h2>
+        <h2 className="heading-lg mb-lg">{t("summary.sessionComplete")}</h2>
 
         <div className="card mb-md" style={{padding:28}}>
           <div className="stat-large">{session.threshold}<span className="stat-unit">ms</span></div>
-          <div className="text-body mt-sm">Processing Speed</div>
-          {improvement > 0 && <div style={{fontSize:17,color:"var(--accent)",fontWeight:600,marginTop:8}}>↓ {improvement}ms from baseline</div>}
+          <div className="text-body mt-sm">{t("summary.processingSpeed")}</div>
+          {improvement > 0 && <div style={{fontSize:17,color:"var(--accent)",fontWeight:600,marginTop:8}}>{t("summary.fromBaseline", {ms: improvement})}</div>}
         </div>
 
         <div className="grid-3 mb-md">
           {[
-            { value: `${Math.round(session.accuracy * 100)}%`, label: "Accuracy" },
-            { value: `${session.avgReactionTime}ms`, label: "Reaction" },
-            { value: `${totalSessions}`, label: "Sessions" },
+            { value: `${Math.round(session.accuracy * 100)}%`, label: t("summary.accuracy") },
+            { value: `${session.avgReactionTime}ms`, label: t("summary.reaction") },
+            { value: `${totalSessions}`, label: t("summary.sessions") },
           ].map(m => (
             <div key={m.label} className="card text-center" style={{padding:14}}>
               <div className="stat-medium" style={{fontSize:22}}>{m.value}</div>
@@ -2063,12 +2142,25 @@ function SessionSummary({ appData, updateAppData, setScreen }) {
           ))}
         </div>
 
-        <div className="card card-gold mb-md" style={{padding:26}}>
+        {/* New badge celebration */}
+        {newBadges.length > 0 && (
+          <div className="badge-new mb-md">
+            {newBadges.map(badge => (
+              <div key={badge.id} className="card card-gold" style={{padding:22,textAlign:"center",marginBottom:newBadges.length > 1 ? 8 : 0}}>
+                <div className="text-label mb-sm" style={{color:"var(--gold)"}}>{t("summary.newMilestone")}</div>
+                <div style={{fontSize:40,marginBottom:6}}>{badge.icon}</div>
+                <div style={{fontSize:20,fontWeight:700,color:"var(--text)"}}>{t("badge." + badge.id + ".name")}</div>
+                <div className="text-small mt-sm" style={{color:"var(--text-secondary)"}}>{t("badge." + badge.id + ".description")}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="card card-gold mb-md" style={{padding:26,textAlign:"center"}}>
           <div style={{fontSize:36}}>🧠</div>
-          <div style={{fontSize:30,fontWeight:800,color:"var(--gold)",marginTop:6,fontFamily:"var(--font-display)"}}>+{cognitiveBenefit} years</div>
-          <div className="text-body mt-sm">estimated cognitive health benefit</div>
-          <div style={{fontSize:17,fontWeight:600,color:"var(--gold)",marginTop:6}}>~{riskReduction}% estimated dementia risk reduction</div>
-          <div className="text-small mt-sm">{totalSessions} sessions · Based on ACTIVE study (Coe et al., 2026)</div>
+          <div className="stat-large" style={{color:"var(--gold)",marginTop:6}}>{t("summary.protocolFraction", {count: totalSessions})}</div>
+          <div className="text-body mt-sm">{t("summary.protocolLabel")}</div>
+          <div className="text-small mt-sm" style={{color:"var(--text-muted)",lineHeight:1.6}}>{t("summary.studyFinding")}</div>
         </div>
 
         {/* Personalized impact */}
@@ -2083,11 +2175,11 @@ function SessionSummary({ appData, updateAppData, setScreen }) {
         )}
 
         <div className="card card-highlight mb-md">
-          <p style={{fontSize:16,color:"var(--accent)",fontWeight:600,lineHeight:1.6}}>{randomEncouragement()}</p>
+          <p style={{fontSize:16,color:"var(--accent)",fontWeight:600,lineHeight:1.6}}>{encouragement}</p>
         </div>
 
         <div className="card mb-lg" style={{textAlign:"left"}}>
-          <div className="text-label mb-sm">Did You Know?</div>
+          <div className="text-label mb-sm">{t("summary.didYouKnow")}</div>
           <p className="text-serif" style={{fontSize:17,color:"var(--text-secondary)",lineHeight:1.7}}>{fact.text}</p>
           <div className="citation" style={{marginTop:10}}>
             <div className="citation-source">{fact.source}</div>
@@ -2095,8 +2187,69 @@ function SessionSummary({ appData, updateAppData, setScreen }) {
           </div>
         </div>
 
-        <button className="btn btn-primary" onClick={() => { updateAppData({ _lastSession: null }); setScreen("dashboard"); }}>Done</button>
+        <button className="btn btn-primary" onClick={() => { updateAppData({ _lastSession: null }); setScreen("dashboard"); }}>{t("summary.done")}</button>
       </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PROTOCOL PATH — visual timeline of the ACTIVE study journey
+   ═══════════════════════════════════════════════════════════ */
+const PROTOCOL_MILESTONES = [
+  { session: 1, label: "First Step", detail: "Baseline established" },
+  { session: 5, label: "Building Habit", detail: "Consistent training matters most" },
+  { session: 10, label: "Core Protocol", detail: "Matched the ACTIVE study's 10-session core" },
+  { session: 14, label: "Full Protocol", detail: "Full ACTIVE protocol with boosters — the study found 25% relative risk reduction in this group" },
+  { session: Infinity, label: "Ongoing Boosters", detail: "Maintaining your gains with continued training" },
+];
+
+function ProtocolPath({ sessionCount }) {
+  const { t } = useTranslation();
+  return (
+    <div className="card">
+      <div className="heading-sm mb-md" style={{fontSize:15}}>{t("progress.protocolTitle")}</div>
+      <div className="protocol-path">
+        {PROTOCOL_MILESTONES.map((milestone, i) => {
+          const target = milestone.session === Infinity ? 15 : milestone.session;
+          const completed = sessionCount >= target;
+          const isLast = milestone.session === Infinity;
+          const isCurrent = !isLast
+            ? sessionCount >= milestone.session && (i === PROTOCOL_MILESTONES.length - 2 || sessionCount < PROTOCOL_MILESTONES[i + 1].session)
+            : sessionCount >= 14;
+          const future = !completed && !isCurrent;
+          const isFirstAndEmpty = i === 0 && sessionCount === 0;
+
+          return (
+            <div key={i} className="protocol-node"
+              data-completed={completed && !isCurrent ? "true" : "false"}
+              data-current={isCurrent || isFirstAndEmpty ? "true" : "false"}
+              data-future={future && !isFirstAndEmpty ? "true" : "false"}>
+              <div className="protocol-node-line"/>
+              <div className="protocol-node-dot">
+                {completed && !isCurrent ? "✓" : isLast ? "∞" : milestone.session}
+              </div>
+              <div className="protocol-node-content">
+                <div className="protocol-node-label">
+                  {isLast ? milestone.label : `Session ${milestone.session} — ${milestone.label}`}
+                </div>
+                <div className="protocol-node-detail">{milestone.detail}</div>
+                {isCurrent && !isLast && (
+                  <div className="protocol-node-badge">
+                    {sessionCount}/{milestone.session} sessions{sessionCount < milestone.session ? ` — ${milestone.session - sessionCount} to go` : " — Complete!"}
+                  </div>
+                )}
+                {isCurrent && isLast && (
+                  <div className="protocol-node-badge">{sessionCount} sessions completed</div>
+                )}
+                {isFirstAndEmpty && (
+                  <div className="protocol-node-badge">Start here</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -2106,11 +2259,11 @@ function SessionSummary({ appData, updateAppData, setScreen }) {
    PROGRESS
    ═══════════════════════════════════════════════════════════ */
 function ProgressScreen({ appData, setScreen }) {
+  const { t } = useTranslation();
   const sessions = appData.sessions || [];
-  const baseline = appData.baseline || INITIAL_DISPLAY_TIME;
+  const ageNorm = AGE_NORMS[appData.ageGroup] || AGE_NORMS["60–69"];
+  const baseline = appData.baseline || ageNorm;
   const improvement = sessions.length > 0 ? baseline - sessions[sessions.length - 1].threshold : 0;
-  const cognitiveBenefit = estimateCognitiveBenefit(sessions.length, Math.max(0, improvement));
-  const riskReduction = estimateRiskReduction(sessions.length, Math.max(0, improvement));
   const earnedBadges = getEarnedBadges(appData);
 
   const chartData = sessions.map((s, i) => ({
@@ -2137,35 +2290,36 @@ function ProgressScreen({ appData, setScreen }) {
   return (
     <div className="screen screen-padded">
       <GlobalHeader setScreen={setScreen} rightContent={
-        <button className="btn btn-ghost" onClick={() => setScreen("dashboard")}>Back</button>
+        <button className="btn btn-ghost" onClick={() => setScreen("dashboard")}>{t("nav.back")}</button>
       }/>
       <div className="app-content">
-        <h2 className="heading-md mb-md">Your Progress</h2>
+        <h2 className="heading-md mb-md">{t("progress.title")}</h2>
       </div>
 
       {sessions.length === 0 ? (
-        <div className="app-content text-center" style={{paddingTop:60}}>
-          <div style={{fontSize:48,opacity:0.4,marginBottom:16}}>📊</div>
-          <p className="text-body mb-lg">Complete your first session to see progress.</p>
-          <button className="btn btn-primary" onClick={() => setScreen("dashboard")} style={{maxWidth:240,margin:"0 auto"}}>Start Training</button>
+        <div className="app-content flex-col gap-md animate-in" style={{paddingTop:20}}>
+          <ProtocolPath sessionCount={0}/>
+          <button className="btn btn-primary" onClick={() => setScreen("dashboard")} style={{maxWidth:240,margin:"0 auto"}}>{t("progress.startTraining")}</button>
         </div>
       ) : (
         <div className="app-content flex-col gap-md animate-in">
-          <div className="card card-gold" style={{display:"flex",alignItems:"center",gap:10,padding:"14px 18px"}}>
+          <ProtocolPath sessionCount={sessions.length}/>
+
+          <div className={sessions.length >= 14 ? "card card-gold" : "card card-highlight"} style={{display:"flex",alignItems:"center",gap:10,padding:"14px 18px"}}>
             <span style={{fontSize:22}}>🧠</span>
-            <span style={{fontSize:17,fontWeight:600,color:"var(--gold)"}}>+{cognitiveBenefit} years cognitive health · ~{riskReduction}% risk reduction</span>
+            <span style={{fontSize:17,fontWeight:600,color:sessions.length >= 14 ? "var(--gold)" : "var(--text)"}}>{sessions.length >= 14 ? t("progress.protocolComplete", {count: sessions.length}) : t("progress.protocolStatus", {count: sessions.length})}</span>
           </div>
 
           {/* Badges */}
           {earnedBadges.length > 0 && (
             <div className="card">
-              <div className="heading-sm mb-sm" style={{fontSize:15}}>Milestones Earned</div>
+              <div className="heading-sm mb-sm" style={{fontSize:15}}>{t("progress.milestonesEarned")}</div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 {earnedBadges.map(badge => (
-                  <div key={badge.id} title={badge.description} style={{display:"flex",alignItems:"center",gap:6,
+                  <div key={badge.id} title={t("badge." + badge.id + ".description")} style={{display:"flex",alignItems:"center",gap:6,
                     padding:"6px 12px",background:"var(--accent-light)",border:"1px solid var(--accent-border)",
                     borderRadius:"var(--radius-sm)",fontSize:16,color:"var(--accent)",fontWeight:500}}>
-                    <span>{badge.icon}</span> {badge.name}
+                    <span>{badge.icon}</span> {t("badge." + badge.id + ".name")}
                   </div>
                 ))}
               </div>
@@ -2173,20 +2327,20 @@ function ProgressScreen({ appData, setScreen }) {
           )}
 
           <div className="card" style={{paddingBottom:10}}>
-            <div className="heading-sm">Processing Speed</div>
-            <div className="text-small mb-sm">Lower is faster (better)</div>
+            <div className="heading-sm">{t("progress.processingSpeed")}</div>
+            <div className="text-small mb-sm">{t("progress.lowerIsFaster")}</div>
             <ResponsiveContainer width="100%" height={180}>
               <LineChart data={chartData}>
                 <XAxis dataKey="date" tick={{fill:'var(--text-muted)',fontSize:11}} tickLine={false} axisLine={{stroke:'var(--chart-grid)'}}/>
                 <YAxis tick={{fill:'var(--text-muted)',fontSize:11}} tickLine={false} axisLine={{stroke:'var(--chart-grid)'}} reversed domain={['dataMin-20','dataMax+20']}/>
-                <Tooltip contentStyle={ChartTooltipStyle()} formatter={v => [`${v}ms`, 'Speed']}/>
+                <Tooltip contentStyle={ChartTooltipStyle()} formatter={v => [`${v}ms`, t("chart.speed")]}/>
                 <Line type="monotone" dataKey="speed" stroke="var(--chart-line)" strokeWidth={2.5} dot={{fill:'var(--chart-line)',r:3}}/>
               </LineChart>
             </ResponsiveContainer>
           </div>
 
           <div className="card" style={{paddingBottom:10}}>
-            <div className="heading-sm mb-sm">Accuracy</div>
+            <div className="heading-sm mb-sm">{t("progress.accuracy")}</div>
             <ResponsiveContainer width="100%" height={140}>
               <LineChart data={chartData}>
                 <XAxis dataKey="date" tick={{fill:'var(--text-muted)',fontSize:11}} tickLine={false} axisLine={{stroke:'var(--chart-grid)'}}/>
@@ -2199,7 +2353,7 @@ function ProgressScreen({ appData, setScreen }) {
 
           {weeklyData.length > 0 && (
             <div className="card" style={{paddingBottom:10}}>
-              <div className="heading-sm mb-sm">Sessions Per Week</div>
+              <div className="heading-sm mb-sm">{t("progress.sessionsPerWeek")}</div>
               <ResponsiveContainer width="100%" height={120}>
                 <BarChart data={weeklyData.slice(-8)}>
                   <XAxis dataKey="week" tick={{fill:'var(--text-muted)',fontSize:11}} tickLine={false} axisLine={{stroke:'var(--chart-grid)'}}/>
@@ -2214,9 +2368,9 @@ function ProgressScreen({ appData, setScreen }) {
 
           <div className="grid-3">
             {[
-              { value: sessions.length, label: "Sessions" },
-              { value: improvement > 0 ? `${improvement}ms` : "—", label: "Improvement" },
-              { value: `${baseline}ms`, label: "Baseline" },
+              { value: sessions.length, label: t("progress.sessions") },
+              { value: improvement > 0 ? `${improvement}ms` : "—", label: t("progress.improvement") },
+              { value: `${baseline}ms`, label: t("progress.baseline") },
             ].map(m => (
               <div key={m.label} className="card text-center" style={{padding:14}}>
                 <div className="stat-medium" style={{fontSize:20}}>{m.value}</div>
@@ -2238,28 +2392,23 @@ function ProgressScreen({ appData, setScreen }) {
    SCIENCE
    ═══════════════════════════════════════════════════════════ */
 function ScienceScreen({ setScreen }) {
-  const mechanismPoints = [
-    { title: "Adaptive Difficulty", description: "Adjusts to your exact ability in real time — the optimal zone for driving neural change." },
-    { title: "Implicit Learning", description: "Engages automatic processing, building durable skill-like habits rather than strategies that fade." },
-    { title: "Cognitive Reserve", description: "Activates broader neuronal networks, building resilience against age-related decline." },
-    { title: "Booster Sessions", description: "Only those who continued training saw lasting benefits. Ongoing practice is essential." },
-  ];
+  const { t } = useTranslation();
+  const mechanismKeys = ["adaptiveDifficulty", "implicitLearning", "cognitiveReserve", "boosterSessions"];
 
   return (
     <div className="screen screen-padded">
       <GlobalHeader setScreen={setScreen} rightContent={
-        <button className="btn btn-ghost" onClick={() => setScreen("dashboard")}>Back</button>
+        <button className="btn btn-ghost" onClick={() => setScreen("dashboard")}>{t("nav.back")}</button>
       }/>
       <div className="app-content">
-        <h2 className="heading-md mb-md">The Science</h2>
+        <h2 className="heading-md mb-md">{t("science.title")}</h2>
       </div>
 
       <div className="app-content flex-col gap-md animate-in">
         <div className="card">
-          <h3 className="heading-sm mb-md" style={{fontSize:18}}>The ACTIVE Study</h3>
+          <h3 className="heading-sm mb-md" style={{fontSize:18}}>{t("science.activeStudy.title")}</h3>
           <p className="text-serif" style={{fontSize:17,lineHeight:1.8,color:"var(--text-secondary)"}}>
-            2,802 adults aged 65+ were enrolled in 1998 and randomly assigned to memory, reasoning, speed-of-processing training, or a control group.
-            After 20 years, only the speed training group with boosters showed a significant reduction — 25% fewer dementia diagnoses.
+            {t("science.activeStudy.body")}
           </p>
           <div className="citation mt-md">
             <div className="citation-source">Coe et al., Alzheimer's & Dementia: TRCI, 2026</div>
@@ -2268,37 +2417,40 @@ function ScienceScreen({ setScreen }) {
         </div>
 
         <div className="card">
-          <h3 className="heading-sm mb-md" style={{fontSize:18}}>Why Speed Training Works</h3>
-          {mechanismPoints.map((point, index) => (
-            <div key={index} style={{display:"flex",gap:14,marginBottom:index < mechanismPoints.length - 1 ? 20 : 0}}>
+          <h3 className="heading-sm mb-md" style={{fontSize:18}}>{t("science.whyItWorks.title")}</h3>
+          {mechanismKeys.map((key, index) => (
+            <div key={index} style={{display:"flex",gap:14,marginBottom:index < mechanismKeys.length - 1 ? 20 : 0}}>
               <div className="flex-center" style={{width:34,height:34,borderRadius:17,background:"var(--accent-light)",
                 color:"var(--accent)",fontSize:17,fontWeight:700,flexShrink:0,border:"1px solid var(--accent-border)"}}>{index + 1}</div>
               <div>
-                <div className="heading-sm" style={{marginBottom:4}}>{point.title}</div>
-                <p className="text-body" style={{fontSize:15}}>{point.description}</p>
+                <div className="heading-sm" style={{marginBottom:4}}>{t("science.mechanism." + key + ".title")}</div>
+                <p className="text-body" style={{fontSize:15}}>{t("science.mechanism." + key + ".desc")}</p>
               </div>
             </div>
           ))}
         </div>
 
         <div className="card">
-          <h3 className="heading-sm mb-md" style={{fontSize:18}}>Supporting Research</h3>
-          {RESEARCH_FACTS.slice(2, 9).map((fact, index) => (
-            <div key={index} style={{marginBottom:16,paddingBottom:16,borderBottom:index < 6 ? "1px solid var(--border-light)" : "none"}}>
-              <p className="text-serif" style={{fontSize:17,lineHeight:1.7,color:"var(--text-secondary)",marginBottom:6}}>{fact.text}</p>
-              <div className="citation-source">{fact.source}</div>
-              <div className="citation-inst">{fact.institution}</div>
-            </div>
-          ))}
+          <h3 className="heading-sm mb-md" style={{fontSize:18}}>{t("science.supportingResearch")}</h3>
+          {[2,3,4,5,6,7,8].map((factIdx, index) => {
+            const fact = getResearchFact(t, factIdx);
+            return (
+              <div key={index} style={{marginBottom:16,paddingBottom:16,borderBottom:index < 6 ? "1px solid var(--border-light)" : "none"}}>
+                <p className="text-serif" style={{fontSize:17,lineHeight:1.7,color:"var(--text-secondary)",marginBottom:6}}>{fact.text}</p>
+                <div className="citation-source">{fact.source}</div>
+                <div className="citation-inst">{fact.institution}</div>
+              </div>
+            );
+          })}
         </div>
 
         <div className="card">
-          <h3 className="heading-sm mb-sm" style={{fontSize:18}}>How Cognify Is Different</h3>
+          <h3 className="heading-sm mb-sm" style={{fontSize:18}}>{t("science.howDifferent.title")}</h3>
           <p className="text-body">
-            Unlike apps with broad, unsubstantiated claims, Cognify implements the specific adaptive visual speed-of-processing protocol from the ACTIVE study — the only cognitive training shown in a randomized trial to reduce dementia diagnoses over decades.
+            {t("science.howDifferent.body")}
           </p>
           <p className="text-serif" style={{fontSize:16,color:"var(--text-muted)",fontStyle:"italic",marginTop:14,lineHeight:1.6}}>
-            Note: Cognify is a cognitive fitness tool. We do not claim to prevent, treat, or cure dementia.
+            {t("science.howDifferent.disclaimer")}
           </p>
         </div>
       </div>
@@ -2312,11 +2464,13 @@ function ScienceScreen({ setScreen }) {
    SETTINGS
    ═══════════════════════════════════════════════════════════ */
 function SettingsScreen({ appData, updateAppData, setScreen, user, handleLogout }) {
-  const { mode, toggleTheme } = useContext(ThemeContext);
+  const { t, locale } = useTranslation();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editingGoal, setEditingGoal] = useState(false);
   const [editingAge, setEditingAge] = useState(false);
+  const [editingSessionMode, setEditingSessionMode] = useState(false);
   const [confirmRetake, setConfirmRetake] = useState(false);
+  const [editingLanguage, setEditingLanguage] = useState(false);
 
   const deleteAccount = async () => {
     await storageSet("data_" + user.username, null);
@@ -2331,7 +2485,7 @@ function SettingsScreen({ appData, updateAppData, setScreen, user, handleLogout 
         <span>{label}</span>
         {hint && <div className="text-small" style={{fontSize:17,marginTop:2}}>{hint}</div>}
       </div>
-      <span style={{fontWeight:600,color:accent ? "var(--accent)" : "var(--text)"}}>{value}{onClick ? " ›" : ""}</span>
+      <span style={{fontWeight:600,color:accent ? "var(--accent)" : "var(--text)"}}>{value}{onClick ? " >" : ""}</span>
     </div>
   );
 
@@ -2341,35 +2495,76 @@ function SettingsScreen({ appData, updateAppData, setScreen, user, handleLogout 
   return (
     <div className="screen" style={{paddingBottom:40}}>
       <GlobalHeader setScreen={setScreen} rightContent={
-        <button className="btn btn-ghost" onClick={() => setScreen("dashboard")}>Back</button>
+        <button className="btn btn-ghost" onClick={() => setScreen("dashboard")}>{t("nav.back")}</button>
       }/>
       <div className="app-content">
-        <h2 className="heading-md mb-md">Settings</h2>
+        <h2 className="heading-md mb-md">{t("settings.title")}</h2>
       </div>
 
       <div className="app-content flex-col gap-md">
         {/* Account */}
         <div className="card">
-          <div className="text-label mb-sm">Account</div>
-          <SettingsRow label="Username" value={user?.username}/>
+          <div className="text-label mb-sm">{t("settings.account")}</div>
+          <SettingsRow label={t("settings.username")} value={user?.username}/>
         </div>
 
-        {/* Appearance */}
+        {/* Accessibility */}
         <div className="card">
-          <div className="text-label mb-sm">Appearance</div>
-          <SettingsRow label="Theme" value={mode === "light" ? "Light" : "Dark"} onClick={toggleTheme} accent/>
+          <div className="text-label mb-sm">{t("settings.accessibility")}</div>
+
+          {/* Language */}
+          {!editingLanguage ? (
+            <SettingsRow label={t("settings.language")} value={LANGUAGES.find(l => l.code === locale)?.nativeName || "English"} onClick={() => setEditingLanguage(true)} accent/>
+          ) : (
+            <div style={{padding:"14px 0",borderBottom:"1px solid var(--border-light)"}}>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {LANGUAGES.map(lang => (
+                  <button key={lang.code} className="btn" onClick={() => { updateAppData({ language: lang.code }); setEditingLanguage(false); }}
+                    style={{padding:"10px 16px",fontSize:17,fontWeight:600,borderRadius:"var(--radius-sm)",
+                      border: locale === lang.code ? "1.5px solid var(--accent-border)" : "1.5px solid var(--border)",
+                      background: locale === lang.code ? "var(--accent-light)" : "transparent",
+                      color: locale === lang.code ? "var(--accent)" : "var(--text-secondary)"}}>
+                    {lang.nativeName}
+                  </button>
+                ))}
+              </div>
+              <button className="btn btn-ghost mt-sm" onClick={() => setEditingLanguage(false)} style={{fontSize:14}}>{t("nav.cancel")}</button>
+            </div>
+          )}
+
+          {/* Font Size */}
+          <div style={{padding:"14px 0",borderBottom:"1px solid var(--border-light)"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <span>{t("settings.fontSize")}</span>
+            </div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {["normal","large","extraLarge"].map(size => (
+                <button key={size} className="btn" onClick={() => updateAppData({ fontSize: size })}
+                  style={{padding:"10px 18px",fontSize:17,fontWeight:600,borderRadius:"var(--radius-sm)",
+                    border: (appData.fontSize || "normal") === size ? "1.5px solid var(--accent-border)" : "1.5px solid var(--border)",
+                    background: (appData.fontSize || "normal") === size ? "var(--accent-light)" : "transparent",
+                    color: (appData.fontSize || "normal") === size ? "var(--accent)" : "var(--text-secondary)"}}>
+                  {t("settings.fontSize." + size)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* High Contrast */}
+          <SettingsRow label={t("settings.highContrast")} value={appData.highContrast ? t("settings.on") : t("settings.off")}
+            onClick={() => updateAppData({ highContrast: !appData.highContrast })} accent/>
         </div>
 
         {/* Training */}
         <div className="card">
-          <div className="text-label mb-sm">Training</div>
+          <div className="text-label mb-sm">{t("settings.training")}</div>
 
           {/* Weekly Goal — editable */}
           {!editingGoal ? (
-            <SettingsRow label="Weekly Goal" value={appData.weeklyGoal + " sessions"} onClick={() => setEditingGoal(true)} accent/>
+            <SettingsRow label={t("settings.weeklyGoal")} value={appData.weeklyGoal + " " + t("settings.sessions")} onClick={() => setEditingGoal(true)} accent/>
           ) : (
             <div style={{padding:"14px 0",borderBottom:"1px solid var(--border-light)"}}>
-              <div style={{fontSize:16,color:"var(--text-secondary)",marginBottom:10}}>Sessions per week</div>
+              <div style={{fontSize:16,color:"var(--text-secondary)",marginBottom:10}}>{t("settings.sessionsPerWeek")}</div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 {goalOptions.map(g => (
                   <button key={g} className="btn" onClick={() => { updateAppData({ weeklyGoal: g }); setEditingGoal(false); }}
@@ -2381,17 +2576,17 @@ function SettingsScreen({ appData, updateAppData, setScreen, user, handleLogout 
                   </button>
                 ))}
               </div>
-              <button className="btn btn-ghost mt-sm" onClick={() => setEditingGoal(false)} style={{fontSize:14}}>Cancel</button>
+              <button className="btn btn-ghost mt-sm" onClick={() => setEditingGoal(false)} style={{fontSize:14}}>{t("nav.cancel")}</button>
             </div>
           )}
 
           {/* Age Group — editable */}
           {!editingAge ? (
-            <SettingsRow label="Age Group" value={appData.ageGroup} onClick={() => setEditingAge(true)} accent
-              hint="Used for age-appropriate speed comparisons"/>
+            <SettingsRow label={t("settings.ageGroup")} value={appData.ageGroup} onClick={() => setEditingAge(true)} accent
+              hint={t("settings.ageGroupHint")}/>
           ) : (
             <div style={{padding:"14px 0",borderBottom:"1px solid var(--border-light)"}}>
-              <div style={{fontSize:16,color:"var(--text-secondary)",marginBottom:10}}>Select your age group</div>
+              <div style={{fontSize:16,color:"var(--text-secondary)",marginBottom:10}}>{t("settings.selectAgeGroup")}</div>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 {ageOptions.map(ag => (
                   <button key={ag} className="btn" onClick={() => { updateAppData({ ageGroup: ag }); setEditingAge(false); }}
@@ -2403,30 +2598,56 @@ function SettingsScreen({ appData, updateAppData, setScreen, user, handleLogout 
                   </button>
                 ))}
               </div>
-              <button className="btn btn-ghost mt-sm" onClick={() => setEditingAge(false)} style={{fontSize:14}}>Cancel</button>
+              {["18–29","30–39","40–49","50–59"].includes(appData.ageGroup) && (
+                <p className="text-small" style={{color:"var(--text-muted)", marginTop:12, lineHeight:1.6}}>
+                  {t("onboarding.ageDisclaimer")}
+                </p>
+              )}
+              <button className="btn btn-ghost mt-sm" onClick={() => setEditingAge(false)} style={{fontSize:14}}>{t("nav.cancel")}</button>
             </div>
           )}
 
-          <SettingsRow label="Baseline" value={(appData.baseline || "—") + "ms"}/>
-          <SettingsRow label="Total Sessions" value={(appData.sessions || []).length}/>
+          {/* Session Length — editable */}
+          {!editingSessionMode ? (
+            <SettingsRow label={t("training.sessionLength")} value={SESSION_MODES[appData.sessionMode || "full"].label} onClick={() => setEditingSessionMode(true)} accent/>
+          ) : (
+            <div style={{padding:"14px 0",borderBottom:"1px solid var(--border-light)"}}>
+              <div style={{fontSize:16,color:"var(--text-secondary)",marginBottom:10}}>{t("training.sessionLength")}</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {Object.entries(SESSION_MODES).map(([key, m]) => (
+                  <button key={key} className="btn" onClick={() => { updateAppData({ sessionMode: key }); setEditingSessionMode(false); }}
+                    style={{padding:"12px 16px",fontSize:16,fontWeight:500,borderRadius:"var(--radius-sm)",textAlign:"left",
+                      border: (appData.sessionMode || "full") === key ? "1.5px solid var(--accent-border)" : "1.5px solid var(--border)",
+                      background: (appData.sessionMode || "full") === key ? "var(--accent-light)" : "transparent",
+                      color: (appData.sessionMode || "full") === key ? "var(--accent)" : "var(--text-secondary)"}}>
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+              <button className="btn btn-ghost mt-sm" onClick={() => setEditingSessionMode(false)} style={{fontSize:14}}>{t("nav.cancel")}</button>
+            </div>
+          )}
+
+          <SettingsRow label={t("settings.baseline")} value={(appData.baseline || "—") + "ms"}/>
+          <SettingsRow label={t("settings.totalSessions")} value={(appData.sessions || []).length}/>
 
           {/* Retake Baseline */}
           {!confirmRetake ? (
             <div className="settings-row" style={{cursor:"pointer"}} onClick={() => setConfirmRetake(true)}>
-              <span>Retake Baseline Assessment</span>
-              <span style={{fontWeight:600,color:"var(--accent)"}}>Retake ›</span>
+              <span>{t("settings.retakeBaseline")}</span>
+              <span style={{fontWeight:600,color:"var(--accent)"}}>{t("settings.retake")} {"›"}</span>
             </div>
           ) : (
             <div style={{padding:"14px 0",borderBottom:"1px solid var(--border-light)"}}>
               <p style={{fontSize:17,color:"var(--text-secondary)",lineHeight:1.6,marginBottom:12}}>
-                This will run a new 20-trial baseline assessment and update your starting score. Your training history will be kept.
+                {t("settings.retakeConfirm")}
               </p>
               <div style={{display:"flex",gap:10}}>
-                <button className="btn btn-secondary" style={{flex:1,padding:12,fontSize:14}} onClick={() => setConfirmRetake(false)}>Cancel</button>
+                <button className="btn btn-secondary" style={{flex:1,padding:12,fontSize:14}} onClick={() => setConfirmRetake(false)}>{t("nav.cancel")}</button>
                 <button className="btn btn-primary" style={{flex:1,padding:12,fontSize:14}} onClick={() => {
                   updateAppData({ onboarded: false });
                   setScreen("onboarding");
-                }}>Start Assessment</button>
+                }}>{t("settings.startAssessment")}</button>
               </div>
             </div>
           )}
@@ -2434,35 +2655,35 @@ function SettingsScreen({ appData, updateAppData, setScreen, user, handleLogout 
 
         {/* Privacy & Data */}
         <div className="card">
-          <div className="text-label mb-sm">Privacy & Data</div>
-          <SettingsRow label="Research consent" value={appData.researchConsent ? "On" : "Off"}
+          <div className="text-label mb-sm">{t("settings.privacyData")}</div>
+          <SettingsRow label={t("settings.researchConsent")} value={appData.researchConsent ? t("settings.on") : t("settings.off")}
             onClick={() => updateAppData({ researchConsent: !appData.researchConsent })} accent
-            hint="Allow anonymized data for cognitive science research"/>
+            hint={t("settings.researchConsentHint")}/>
         </div>
 
         {/* Actions */}
-        <button className="btn btn-secondary" onClick={handleLogout}>Sign Out</button>
+        <button className="btn btn-secondary" onClick={handleLogout}>{t("settings.signOut")}</button>
 
         {!confirmDelete ? (
           <button className="btn btn-secondary" style={{color:"var(--incorrect)",borderColor:"var(--incorrect)"}} onClick={() => setConfirmDelete(true)}>
-            Delete Account & All Data
+            {t("settings.deleteAccount")}
           </button>
         ) : (
           <div className="card" style={{borderColor:"var(--incorrect)"}}>
             <p style={{fontSize:17,color:"var(--text)",lineHeight:1.6,marginBottom:14}}>
-              This permanently deletes everything — your account, all training data, and progress. This cannot be undone.
+              {t("settings.deleteConfirm")}
             </p>
             <div style={{display:"flex",gap:10}}>
-              <button className="btn btn-secondary" style={{flex:1}} onClick={() => setConfirmDelete(false)}>Cancel</button>
-              <button className="btn btn-primary" style={{flex:1,background:"var(--incorrect)"}} onClick={deleteAccount}>Delete</button>
+              <button className="btn btn-secondary" style={{flex:1}} onClick={() => setConfirmDelete(false)}>{t("nav.cancel")}</button>
+              <button className="btn btn-primary" style={{flex:1,background:"var(--incorrect)"}} onClick={deleteAccount}>{t("settings.delete")}</button>
             </div>
           </div>
         )}
 
         <div className="text-center" style={{padding:"16px 0"}}>
-          <div className="text-small">Cognify v1.0 · Cognitive fitness training</div>
-          <div className="text-small mt-sm">Not a medical device. Not FDA evaluated.</div>
-          <div className="text-small mt-sm">Built by Enrique Reid, Khushaan Virk, Dean Kiyingi & Jasper Gilley</div>
+          <div className="text-small">{t("settings.version")}</div>
+          <div className="text-small mt-sm">{t("settings.disclaimer")}</div>
+          <div className="text-small mt-sm">{t("settings.builtBy")}</div>
         </div>
       </div>
     </div>
