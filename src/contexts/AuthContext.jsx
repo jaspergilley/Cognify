@@ -72,6 +72,9 @@ export function AuthProvider({ children }) {
         performHydration();
       }
       setLoading(false);
+    }).catch((err) => {
+      console.warn('Failed to restore session:', err);
+      setLoading(false);
     });
 
     // Listen for auth state changes
