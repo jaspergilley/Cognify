@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="bolt-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="brain-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="192" height="192" rx="38" fill="#0b0f19"/>
+
+  <!-- Subtle radial glow behind icon -->
+  <circle cx="96" cy="96" r="60" fill="#0ea5e9" opacity="0.06"/>
+
+  <!-- Stylized brain outline - left hemisphere -->
+  <path d="M72 56 C52 56, 40 70, 40 86 C40 96, 44 104, 52 110 C48 116, 48 124, 54 130 C58 136, 66 138, 74 136 C78 140, 86 142, 92 138 L92 96 L92 58 C86 54, 78 54, 72 56Z"
+        fill="none" stroke="url(#brain-grad)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+
+  <!-- Stylized brain outline - right hemisphere -->
+  <path d="M120 56 C140 56, 152 70, 152 86 C152 96, 148 104, 140 110 C144 116, 144 124, 138 130 C134 136, 126 138, 118 136 C114 140, 106 142, 100 138 L100 96 L100 58 C106 54, 114 54, 120 56Z"
+        fill="none" stroke="url(#brain-grad)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+
+  <!-- Brain folds - left -->
+  <path d="M58 78 C66 74, 76 78, 82 84" fill="none" stroke="url(#brain-grad)" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+  <path d="M50 98 C60 92, 72 96, 80 100" fill="none" stroke="url(#brain-grad)" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+
+  <!-- Brain folds - right -->
+  <path d="M134 78 C126 74, 116 78, 110 84" fill="none" stroke="url(#brain-grad)" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+  <path d="M142 98 C132 92, 120 96, 112 100" fill="none" stroke="url(#brain-grad)" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+
+  <!-- Central lightning bolt - the "speed" element -->
+  <path d="M104 52 L88 98 L100 98 L86 142 L116 90 L102 90 Z"
+        fill="url(#bolt-grad)" opacity="0.95"/>
+
+  <!-- Small highlight on bolt -->
+  <path d="M104 52 L96 76 L104 76 Z" fill="#7dd3fc" opacity="0.5"/>
+</svg>
