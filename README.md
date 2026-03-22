@@ -1,3 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 80">
+  <circle cx="36" cy="40" r="28" fill="none" stroke="#2D6A4F" stroke-width="3"/>
+  <circle cx="36" cy="40" r="15" fill="none" stroke="#2D6A4F" stroke-width="2" opacity="0.4"/>
+  <circle cx="36" cy="40" r="5.5" fill="#2D6A4F"/>
+  <text x="80" y="52" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-weight="700" font-size="38" letter-spacing="6" fill="#2D6A4F">COGNIFY</text>
+</svg>
 # Cognify
 
 **Evidence-based cognitive speed training built on a 20-year NIH clinical trial.**
