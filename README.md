@@ -1,4 +1,4 @@
-<img src="cognify-logo.svg" width="320"/>
+<img src="cognify-logo.svg" width="960"/>
 
 # Cognify
 
