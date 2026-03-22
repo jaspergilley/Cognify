@@ -13,11 +13,16 @@ import { ResponseButtons } from './ResponseButtons.jsx';
 import { PeripheralResponse } from './PeripheralResponse.jsx';
 import { Dashboard } from './Dashboard.jsx';
 import { framesToMs } from '../engine/stimulusRenderer.js';
-import { getBestThreshold, getLatestThreshold } from '../services/dataService.js';
+import { getBestThreshold, getLatestThreshold, getCompletedSessionCount, loadBadges, addBadge, loadSettings } from '../services/dataService.js';
+import { evaluateBadges, detectNewBadges, BADGE_DEFINITIONS } from '../engine/badgeEngine.js';
+import { UNLOCK_THRESHOLDS } from '../engine/gameConfig.js';
+import { getBetweenBlockMessage, getPersonalizedImpactMessage, getEncouragement, randomFactIndex } from '../engine/scienceContent.js';
 import { TopAppBar } from './dashboard/TopAppBar.jsx';
 import { BottomNav } from './dashboard/BottomNav.jsx';
+import { useTranslation } from '../i18n/index.jsx';
 
 export function TrainingApp({ engineData, renderRef }) {
+  const { t } = useTranslation();
   const training = useTraining(engineData, renderRef);
   const {
     uiPhase, beginTraining, startSessionWithType, respondShape, respondLocation,
@@ -127,9 +132,9 @@ export function TrainingApp({ engineData, renderRef }) {
                 <span className="material-symbols-outlined text-on-surface-variant text-2xl">close</span>
               </button>
               <span className="font-headline font-bold text-xl text-primary tracking-tight italic">
-                {s?.exerciseType === 2 ? 'Divided Attention' :
-                 s?.exerciseType === 3 ? 'Selective Attention' :
-                 'Speed Training'}
+                {s?.exerciseType === 2 ? t('training.dividedAttention') :
+                 s?.exerciseType === 3 ? t('training.selectiveAttention') :
+                 t('training.centralId')}
               </span>
               <div className="flex items-center gap-3">
                 {s && (
@@ -193,9 +198,9 @@ export function TrainingApp({ engineData, renderRef }) {
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-inverse-surface/60 px-4">
           <div className="flex flex-col items-center gap-6 bg-surface-container-lowest rounded-xl px-8 py-8 shadow-xl animate-scale-in max-w-sm w-full">
             <span className="material-symbols-outlined text-error text-5xl">warning</span>
-            <h3 className="font-headline text-2xl font-bold text-on-surface">Quit Session?</h3>
+            <h3 className="font-headline text-2xl font-bold text-on-surface">{t('trial.exitConfirm').split('?')[0]}?</h3>
             <p className="text-on-surface-variant text-lg text-center">
-              Your progress in this session will not be saved.
+              {t('trial.exitConfirm')}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 w-full">
               <button
@@ -204,7 +209,7 @@ export function TrainingApp({ engineData, renderRef }) {
                            active:scale-95 transition-transform duration-200 cursor-pointer
                            shadow-[0_4px_20px_rgba(74,124,89,0.2)]"
               >
-                Keep Going
+                {t('trial.keepGoing')}
               </button>
               <button
                 onClick={confirmAbort}
@@ -212,7 +217,7 @@ export function TrainingApp({ engineData, renderRef }) {
                            border border-error/20
                            active:scale-95 transition-all duration-200 cursor-pointer"
               >
-                Quit Session
+                {t('trial.endSession')}
               </button>
             </div>
           </div>
@@ -580,9 +585,11 @@ function ExerciseSelect({ onSelect, devUnlock, ex3Available }) {
 }
 
 function RestScreen({ block, totalBlocks, restMs, session, onResume, onFinishEarly }) {
+  const { t } = useTranslation();
   const [remaining, setRemaining] = useState(Math.ceil(restMs / 1000));
   const [progress, setProgress] = useState(0);
   const [canContinue, setCanContinue] = useState(false);
+  const [blockMsgIndex] = useState(() => Math.floor(Math.random() * 4));
   const intervalRef = useRef(null);
 
   useEffect(() => {
@@ -667,6 +674,13 @@ function RestScreen({ block, totalBlocks, restMs, session, onResume, onFinishEar
         </div>
       )}
 
+      {/* Between-block research fact */}
+      <div className="w-full max-w-sm bg-tertiary-fixed rounded-xl p-5 border border-tertiary/20 mb-8">
+        <p className="text-on-tertiary-container font-bold text-sm mb-2">{getBetweenBlockMessage(t, blockMsgIndex).encouragement}</p>
+        <p className="text-on-tertiary-container/80 text-xs leading-relaxed">{getBetweenBlockMessage(t, blockMsgIndex).fact}</p>
+        <p className="text-on-tertiary-container/60 text-xs mt-1 italic">{getBetweenBlockMessage(t, blockMsgIndex).source}</p>
+      </div>
+
       {/* Resume button */}
       <button
         onClick={canContinue ? onResume : undefined}
@@ -693,6 +707,7 @@ function RestScreen({ block, totalBlocks, restMs, session, onResume, onFinishEar
 }
 
 function PostSessionScreen({ summary, threshold, stats, hz, exerciseType, onFinish, onViewHistory }) {
+  const { t } = useTranslation();
   if (!summary) return null;
 
   const thresholdMs = Math.round(framesToMs(threshold.threshold, hz));
@@ -705,6 +720,25 @@ function PostSessionScreen({ summary, threshold, stats, hz, exerciseType, onFini
     ? Math.round(((prev.thresholdMs - thresholdMs) / prev.thresholdMs) * 100) || null
     : null;
 
+  // Badge evaluation
+  const totalSessions = getCompletedSessionCount(1) + getCompletedSessionCount(2) + getCompletedSessionCount(3);
+  const bestEx1 = getBestThreshold(1, hz);
+  const bestEx2 = getBestThreshold(2, hz);
+  const settings = loadSettings();
+  const badgeStats = {
+    totalSessions,
+    ex2Unlocked: bestEx1 && bestEx1.thresholdMs <= UNLOCK_THRESHOLDS[2],
+    ex3Unlocked: bestEx2 && bestEx2.thresholdMs <= UNLOCK_THRESHOLDS[3],
+    bestThresholdMs: best?.thresholdMs ?? null,
+    hitWeeklyGoal: false, // TODO: compute from weekly streak data
+  };
+  const previousBadges = loadBadges();
+  const newBadges = detectNewBadges(previousBadges, badgeStats);
+  // Persist newly earned badges
+  if (newBadges.length > 0) {
+    newBadges.forEach((id) => addBadge(id));
+  }
+
   return (
     <div className="absolute inset-0 flex flex-col bg-background overflow-y-auto safe-inset animate-in">
       <TopAppBar devUnlock={false} onOpenSettings={() => {}} onOpenWhatsNew={() => {}} />
@@ -715,7 +749,7 @@ function PostSessionScreen({ summary, threshold, stats, hz, exerciseType, onFini
           <div className="inline-flex items-center justify-center w-20 h-20 bg-primary-container/20 rounded-full mb-6">
             <span className="material-symbols-outlined text-primary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-headline font-bold text-on-surface mb-4">Session Complete!</h1>
+          <h1 className="text-4xl md:text-5xl font-headline font-bold text-on-surface mb-4">{t('summary.sessionComplete')}</h1>
           <p className="text-xl text-on-surface-variant font-body">
             {isPersonalBest ? 'New Personal Best! Keep pushing!' : 'Great job! You are getting faster.'}
           </p>
@@ -736,7 +770,7 @@ function PostSessionScreen({ summary, threshold, stats, hz, exerciseType, onFini
                         shadow-[0_4px_20px_rgba(46,50,48,0.06)] border border-outline-variant/30
                         text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-tertiary to-primary" />
-          <p className="text-secondary font-label uppercase tracking-widest text-sm mb-2">Speed Threshold</p>
+          <p className="text-secondary font-label uppercase tracking-widest text-sm mb-2">{t('summary.processingSpeed')}</p>
           <div className="flex items-center justify-center gap-1">
             <span className="text-7xl font-headline font-black text-primary tabular-nums">{thresholdMs}</span>
             <span className="text-2xl font-headline font-medium text-on-surface-variant mt-4">ms</span>
@@ -756,19 +790,41 @@ function PostSessionScreen({ summary, threshold, stats, hz, exerciseType, onFini
           <div className="bg-surface-container-high rounded-lg p-6 flex flex-col items-center text-center">
             <span className="material-symbols-outlined text-tertiary mb-3">target</span>
             <span className="text-2xl font-headline font-bold text-on-surface tabular-nums">{Math.round(summary.accuracy * 100)}%</span>
-            <span className="text-sm text-on-surface-variant font-label">Accuracy</span>
+            <span className="text-sm text-on-surface-variant font-label">{t('summary.accuracy')}</span>
           </div>
           <div className="bg-surface-container-high rounded-lg p-6 flex flex-col items-center text-center">
             <span className="material-symbols-outlined text-tertiary mb-3">rebase_edit</span>
             <span className="text-2xl font-headline font-bold text-on-surface tabular-nums">{summary.totalTrials}</span>
-            <span className="text-sm text-on-surface-variant font-label">Total Trials</span>
+            <span className="text-sm text-on-surface-variant font-label">{t('summary.sessions')}</span>
           </div>
           <div className="bg-surface-container-high rounded-lg p-6 flex flex-col items-center text-center">
             <span className="material-symbols-outlined text-tertiary mb-3">timer</span>
             <span className="text-2xl font-headline font-bold text-on-surface tabular-nums">{durationMin}m</span>
-            <span className="text-sm text-on-surface-variant font-label">Time</span>
+            <span className="text-sm text-on-surface-variant font-label">{t('chart.speed')}</span>
           </div>
         </div>
+
+        {/* Newly earned badges */}
+        {newBadges.length > 0 && (
+          <div className="mb-8 space-y-3">
+            <h3 className="font-headline text-xl font-bold text-on-surface text-center">{t('summary.newMilestone')}</h3>
+            <div className="flex flex-wrap justify-center gap-3">
+              {newBadges.map((badgeId) => {
+                const def = BADGE_DEFINITIONS.find((b) => b.id === badgeId);
+                if (!def) return null;
+                return (
+                  <div key={badgeId} className="flex flex-col items-center gap-2 px-4 py-3 bg-primary-container/10 rounded-xl border border-primary/20 animate-scale-in">
+                    <div className="w-12 h-12 rounded-full bg-primary/15 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-primary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>{def.icon}</span>
+                    </div>
+                    <span className="text-on-surface font-bold text-sm text-center">{t(def.nameKey)}</span>
+                    <span className="text-on-surface-variant text-xs text-center">{t(def.descKey)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Action buttons */}
         <div className="flex flex-col gap-4">
@@ -777,26 +833,26 @@ function PostSessionScreen({ summary, threshold, stats, hz, exerciseType, onFini
             className="w-full bg-primary text-on-primary py-5 rounded-lg font-bold text-xl
                        shadow-lg hover:brightness-110 active:scale-95 transition-all cursor-pointer"
           >
-            Return to Dashboard
+            {t('summary.done')}
           </button>
           <button
             onClick={onViewHistory}
             className="w-full bg-transparent border-2 border-primary/20 text-primary py-4 rounded-lg
                        font-bold text-lg hover:bg-primary/5 transition-colors cursor-pointer"
           >
-            View Detailed History
+            {t('progress.title')}
           </button>
         </div>
 
-        {/* Insight card */}
+        {/* Personalized impact message */}
         <div className="mt-12 bg-tertiary-fixed rounded-xl p-6 border border-tertiary/20 flex gap-4 items-start">
           <div className="bg-tertiary text-on-tertiary p-2 rounded-lg shrink-0">
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>lightbulb</span>
+            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>science</span>
           </div>
           <div>
-            <h3 className="font-bold text-on-tertiary-container mb-1">Keep It Up!</h3>
+            <h3 className="font-bold text-on-tertiary-container mb-1">{t('summary.didYouKnow')}</h3>
             <p className="text-sm text-on-tertiary-container/80">
-              Consistent daily practice is the key to lasting improvement. Try to train at the same time each day for best results.
+              {getPersonalizedImpactMessage(t, totalSessions, improvement ? (prev?.thresholdMs - thresholdMs) : null, prev?.thresholdMs)}
             </p>
           </div>
         </div>

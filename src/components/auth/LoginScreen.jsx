@@ -9,6 +9,7 @@
 
 import { useState } from 'react';
 import { signInWithEmail, signUpWithEmail } from '../../services/supabaseClient.js';
+import { useTranslation } from '../../i18n/index.jsx';
 
 function validatePassword(pw) {
   if (pw.length < 8) return 'Password must be at least 8 characters';
@@ -31,6 +32,7 @@ function getPasswordStrength(pw) {
 }
 
 export function LoginScreen() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
@@ -162,14 +164,14 @@ export function LoginScreen() {
                        active:scale-95 transition-transform duration-200 shadow-md
                        disabled:opacity-50"
           >
-            {loading ? 'Please wait...' : isSignUp ? 'Create Account' : 'Sign In'}
+            {loading ? (isSignUp ? t('auth.creatingAccount') : t('auth.signingIn')) : isSignUp ? t('auth.createAccount') : t('auth.signIn')}
           </button>
           <button
             type="button"
             onClick={() => { setIsSignUp(!isSignUp); setError(null); }}
             className="w-full text-center text-primary font-bold py-2"
           >
-            {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+            {isSignUp ? <>{t('auth.haveAccount')}{t('auth.signIn')}</> : <>{t('auth.newHere')}{t('auth.createAccount')}</>}
           </button>
         </form>
 

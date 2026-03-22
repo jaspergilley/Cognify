@@ -4,7 +4,11 @@
  * @module components/dashboard/ScienceTab
  */
 
+import { useTranslation } from '../../i18n/index.jsx';
+import { getResearchFact, RESEARCH_FACT_COUNT } from '../../engine/scienceContent.js';
+
 export function ScienceTab() {
+  const { t } = useTranslation();
   return (
     <main className="pt-6 px-6 w-full space-y-12 pb-8">
       {/* Hero Section */}
@@ -178,6 +182,56 @@ export function ScienceTab() {
           Consistency and the right challenge are the keys to longevity."
         </blockquote>
         <p className="mt-6 font-bold text-primary">— Cognify Science Advisory Board</p>
+      </section>
+
+      {/* Why Speed Training Works — Mechanism Cards */}
+      <section className="space-y-6">
+        <h2 className="font-headline text-3xl font-bold text-on-surface">{t('science.whyItWorks.title')}</h2>
+        <div className="grid grid-cols-1 gap-4">
+          {[
+            { key: 'adaptiveDifficulty', icon: 'tune' },
+            { key: 'implicitLearning', icon: 'psychology' },
+            { key: 'cognitiveReserve', icon: 'shield' },
+            { key: 'boosterSessions', icon: 'replay' },
+          ].map(({ key, icon }) => (
+            <div key={key} className="bg-surface-container-low rounded-xl p-5 border border-outline-variant/20 flex gap-4 items-start">
+              <div className="bg-primary/10 p-3 rounded-lg flex-shrink-0">
+                <span className="material-symbols-outlined text-primary text-2xl">{icon}</span>
+              </div>
+              <div>
+                <h4 className="font-bold text-on-surface mb-1">{t(`science.mechanism.${key}.title`)}</h4>
+                <p className="text-on-surface-variant text-sm leading-relaxed">{t(`science.mechanism.${key}.desc`)}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Supporting Research */}
+      <section className="space-y-6">
+        <h2 className="font-headline text-3xl font-bold text-on-surface">{t('science.supportingResearch')}</h2>
+        <div className="space-y-4">
+          {Array.from({ length: RESEARCH_FACT_COUNT }).map((_, i) => {
+            const fact = getResearchFact(t, i);
+            return (
+              <div key={i} className="bg-surface-container-low rounded-xl p-5 border border-outline-variant/20 space-y-2">
+                <p className="text-on-surface text-sm leading-relaxed">{fact.text}</p>
+                <div className="flex items-center gap-2 text-xs text-on-surface-variant">
+                  <span className="material-symbols-outlined text-tertiary text-sm">school</span>
+                  <span className="font-bold">{fact.institution}</span>
+                </div>
+                <p className="text-on-surface-variant text-xs italic">{fact.source}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* How Cognify Is Different */}
+      <section className="bg-primary-container/10 rounded-xl p-8 border border-primary/10 space-y-4">
+        <h2 className="font-headline text-2xl font-bold text-on-surface">{t('science.howDifferent.title')}</h2>
+        <p className="text-on-surface-variant leading-relaxed">{t('science.howDifferent.body')}</p>
+        <p className="text-on-surface-variant text-sm italic">{t('science.howDifferent.disclaimer')}</p>
       </section>
     </main>
   );

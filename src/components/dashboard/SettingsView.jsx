@@ -8,7 +8,8 @@ import { loadSettings, saveSettings, clearAllData, clearUserDataOnSignOut } from
 import { setAudioEnabled, setVolume } from '../../engine/audioFeedback.js';
 import { deleteAccount } from '../../services/supabaseClient.js';
 import { useAuth } from '../../contexts/AuthContext.jsx';
-import { useTranslation } from '../../i18n/index.jsx';
+import { useTranslation, LANGUAGES } from '../../i18n/index.jsx';
+import { SESSION_MODES } from '../../engine/gameConfig.js';
 
 /**
  * Reusable toggle switch component (48px touch target).
@@ -40,13 +41,17 @@ function Toggle({ checked, onChange, label }) {
  */
 export function SettingsView({ onBack, onOpenExport, onResetComplete, showHeader = true }) {
   const { user, signOut } = useAuth();
-  const { t } = useTranslation();
+  const { t, locale, setLocale } = useTranslation();
   const initial = loadSettings();
   const [audioOn, setAudioOn] = useState(initial.audioEnabled);
   const [volume, setVolumeState] = useState(initial.volume);
   const [darkMode, setDarkMode] = useState(initial.darkMode);
   const [sessionLength, setSessionLength] = useState(initial.sessionLength);
   const [difficultyLock, setDifficultyLock] = useState(initial.difficultyLock);
+  const [weeklyGoal, setWeeklyGoal] = useState(initial.weeklyGoal ?? 3);
+  const [sessionMode, setSessionMode] = useState(initial.sessionMode ?? 'full');
+  const [fontSize, setFontSize] = useState(initial.fontSize ?? 'normal');
+  const [highContrast, setHighContrast] = useState(initial.highContrast ?? false);
   const [showAbout, setShowAbout] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -95,6 +100,34 @@ export function SettingsView({ onBack, onOpenExport, onResetComplete, showHeader
     const newVal = !difficultyLock;
     setDifficultyLock(newVal);
     saveSettings({ difficultyLock: newVal });
+  }
+
+  function handleWeeklyGoal(val) {
+    setWeeklyGoal(val);
+    saveSettings({ weeklyGoal: val });
+  }
+
+  function handleSessionMode(mode) {
+    setSessionMode(mode);
+    saveSettings({ sessionMode: mode });
+  }
+
+  function handleLanguageChange(code) {
+    setLocale(code);
+    saveSettings({ language: code });
+  }
+
+  function handleFontSize(size) {
+    setFontSize(size);
+    document.documentElement.setAttribute('data-font-size', size);
+    saveSettings({ fontSize: size });
+  }
+
+  function handleHighContrast() {
+    const newVal = !highContrast;
+    setHighContrast(newVal);
+    document.documentElement.classList.toggle('high-contrast', newVal);
+    saveSettings({ highContrast: newVal });
   }
 
   function handleReset() {
@@ -252,6 +285,55 @@ export function SettingsView({ onBack, onOpenExport, onResetComplete, showHeader
               ))}
             </div>
           </div>
+          {/* Weekly Goal */}
+          <div className="p-5 space-y-3">
+            <div className="flex items-center gap-4">
+              <span className="material-symbols-outlined text-primary text-2xl">flag</span>
+              <div>
+                <p className="font-bold text-on-surface">{t('settings.weeklyGoal')}</p>
+                <p className="text-on-surface-variant text-sm">{t('settings.sessionsPerWeek')}</p>
+              </div>
+            </div>
+            <div className="flex bg-surface-container rounded-xl p-1 gap-1">
+              {[2, 3, 4, 5, 7].map((val) => (
+                <button
+                  key={val}
+                  onClick={() => handleWeeklyGoal(val)}
+                  className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all duration-200
+                              ${weeklyGoal === val
+                                ? 'bg-primary text-on-primary shadow-sm'
+                                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+                              }`}
+                >
+                  {val}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Session Mode */}
+          <div className="p-5 space-y-3">
+            <div className="flex items-center gap-4">
+              <span className="material-symbols-outlined text-primary text-2xl">pace</span>
+              <div>
+                <p className="font-bold text-on-surface">Session Mode</p>
+              </div>
+            </div>
+            <div className="flex bg-surface-container rounded-xl p-1 gap-1">
+              {Object.entries(SESSION_MODES).map(([key, mode]) => (
+                <button
+                  key={key}
+                  onClick={() => handleSessionMode(key)}
+                  className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all duration-200
+                              ${sessionMode === key
+                                ? 'bg-primary text-on-primary shadow-sm'
+                                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+                              }`}
+                >
+                  {mode.label} (~{mode.estimatedMinutes}min)
+                </button>
+              ))}
+            </div>
+          </div>
           {/* Difficulty lock */}
           <div className="flex items-center justify-between p-5 gap-4">
             <div className="flex items-center gap-4 min-w-0">
@@ -262,6 +344,71 @@ export function SettingsView({ onBack, onOpenExport, onResetComplete, showHeader
               </div>
             </div>
             <Toggle checked={difficultyLock} onChange={handleDifficultyLock} label="Toggle difficulty lock" />
+          </div>
+        </div>
+      </section>
+
+      {/* ── Accessibility ── */}
+      <section className="space-y-3">
+        <h2 className="font-headline font-bold text-lg text-on-surface pl-1">{t('settings.accessibility')}</h2>
+        <div className="bg-surface-container-low rounded-xl border border-outline-variant/20 divide-y divide-outline-variant/10">
+          {/* Language */}
+          <div className="p-5 space-y-3">
+            <div className="flex items-center gap-4">
+              <span className="material-symbols-outlined text-primary text-2xl">translate</span>
+              <p className="font-bold text-on-surface">{t('settings.language')}</p>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {LANGUAGES.map((lang) => (
+                <button
+                  key={lang.code}
+                  onClick={() => handleLanguageChange(lang.code)}
+                  className={`py-2.5 px-3 rounded-lg text-sm font-bold transition-all duration-200 truncate
+                              ${locale === lang.code
+                                ? 'bg-primary text-on-primary shadow-sm'
+                                : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+                              }`}
+                >
+                  {lang.nativeName}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Font Size */}
+          <div className="p-5 space-y-3">
+            <div className="flex items-center gap-4">
+              <span className="material-symbols-outlined text-primary text-2xl">format_size</span>
+              <p className="font-bold text-on-surface">{t('settings.fontSize')}</p>
+            </div>
+            <div className="flex bg-surface-container rounded-xl p-1 gap-1">
+              {[
+                { key: 'normal', label: t('settings.fontSize.normal') },
+                { key: 'large', label: t('settings.fontSize.large') },
+                { key: 'extraLarge', label: t('settings.fontSize.extraLarge') },
+              ].map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => handleFontSize(opt.key)}
+                  className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all duration-200
+                              ${fontSize === opt.key
+                                ? 'bg-primary text-on-primary shadow-sm'
+                                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+                              }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* High Contrast */}
+          <div className="flex items-center justify-between p-5 gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <span className="material-symbols-outlined text-primary text-2xl flex-shrink-0">contrast</span>
+              <div className="min-w-0">
+                <p className="font-bold text-on-surface">{t('settings.highContrast')}</p>
+              </div>
+            </div>
+            <Toggle checked={highContrast} onChange={handleHighContrast} label="Toggle high contrast" />
           </div>
         </div>
       </section>
@@ -330,8 +477,8 @@ export function SettingsView({ onBack, onOpenExport, onResetComplete, showHeader
           >
             <span className="material-symbols-outlined text-error text-2xl">person_remove</span>
             <div>
-              <p className="font-bold text-error">Delete Account</p>
-              <p className="text-on-surface-variant text-sm">Permanently delete your account and all data</p>
+              <p className="font-bold text-error">{t('settings.deleteAccount')}</p>
+              <p className="text-on-surface-variant text-sm">{t('settings.deleteConfirm')}</p>
             </div>
           </button>
         </div>
@@ -339,8 +486,8 @@ export function SettingsView({ onBack, onOpenExport, onResetComplete, showHeader
 
       {/* Version footer */}
       <div className="text-center py-4">
-        <p className="text-on-surface-variant text-sm">Cognify v0.3.0</p>
-        <p className="text-on-surface-variant/60 text-xs mt-1">Crafted for mindful aging</p>
+        <p className="text-on-surface-variant text-sm">{t('settings.version')}</p>
+        <p className="text-on-surface-variant/60 text-xs mt-1">{t('settings.disclaimer')}</p>
       </div>
 
       {/* ── About Modal ── */}

@@ -279,6 +279,30 @@ body {
   padding-bottom: 6.5rem;
 }
 
+/* Font size scaling */
+[data-font-size="large"] { font-size: 112.5%; }
+[data-font-size="extraLarge"] { font-size: 125%; }
+
+/* High contrast mode */
+html.high-contrast {
+  --color-primary: #1a5c2a;
+  --color-on-primary: #ffffff;
+  --color-on-surface: #000000;
+  --color-on-surface-variant: #1a1a1a;
+  --color-on-background: #000000;
+  --color-outline: #333333;
+  --color-outline-variant: #666666;
+}
+html.high-contrast.dark {
+  --color-primary: #a0e8b0;
+  --color-on-primary: #000000;
+  --color-on-surface: #ffffff;
+  --color-on-surface-variant: #e0e0e0;
+  --color-on-background: #ffffff;
+  --color-outline: #cccccc;
+  --color-outline-variant: #999999;
+}
+
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .animate-in,

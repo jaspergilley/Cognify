@@ -10,6 +10,8 @@ import {
   XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContainer,
 } from 'recharts';
 import { useTranslation } from '../../i18n/index.jsx';
+import { BADGE_DEFINITIONS } from '../../engine/badgeEngine.js';
+import { loadBadges } from '../../services/dataService.js';
 
 /** Get chart colors based on current dark/light mode */
 function useChartColors() {
@@ -246,20 +248,14 @@ function ExerciseStats({ label, threshold, accuracy, count }) {
 }
 
 function Milestones({ data }) {
-  const totalSessions = data.ex1Count + data.ex2Count + (data.ex3Count || 0);
-  const bestMs = data.best?.thresholdMs;
+  const { t } = useTranslation();
+  const earnedBadgeIds = new Set(loadBadges());
 
-  const milestones = [
-    { title: 'First Session', icon: 'play_circle', earned: totalSessions >= 1 },
-    { title: '5 Sessions', icon: 'fitness_center', earned: totalSessions >= 5 },
-    { title: '10 Sessions', icon: 'workspace_premium', earned: totalSessions >= 10 },
-    { title: '25 Sessions', icon: 'military_tech', earned: totalSessions >= 25 },
-    { title: 'Sub-200ms', icon: 'speed', earned: bestMs != null && bestMs < 200 },
-    { title: 'Sub-150ms', icon: 'bolt', earned: bestMs != null && bestMs < 150 },
-    { title: 'Sub-100ms', icon: 'flash_on', earned: bestMs != null && bestMs < 100 },
-    { title: 'Ex 2 Unlocked', icon: 'blur_on', earned: data.ex2Count > 0 || (data.best && data.best.thresholdMs < 150) },
-    { title: 'Ex 3 Unlocked', icon: 'filter_center_focus', earned: data.ex3Count > 0 },
-  ];
+  const milestones = BADGE_DEFINITIONS.map((badge) => ({
+    title: t(badge.nameKey),
+    icon: badge.icon,
+    earned: earnedBadgeIds.has(badge.id),
+  }));
 
   const earnedCount = milestones.filter((m) => m.earned).length;
   if (earnedCount === 0) return null;
@@ -267,7 +263,7 @@ function Milestones({ data }) {
   return (
     <section className="bg-surface-container-low rounded-xl p-6 shadow-[0_4px_20px_rgba(46,50,48,0.06)] border border-outline-variant/30">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-headline text-xl font-bold text-on-background">Milestones</h3>
+        <h3 className="font-headline text-xl font-bold text-on-background">{t('dashboard.milestones')}</h3>
         <span className="font-label text-on-surface-variant text-sm font-bold uppercase tracking-wider">{earnedCount} / {milestones.length}</span>
       </div>
       <div className="scroll-snap-x flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">

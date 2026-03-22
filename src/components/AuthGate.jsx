@@ -2,17 +2,30 @@
  * Auth Gate
  *
  * Conditionally renders the app or the login screen
- * based on authentication state. Shows non-blocking
+ * based on authentication state. Gates on onboarding
+ * completion after sign-in. Shows non-blocking
  * hydration/error banners during cloud sync.
  *
  * @module components/AuthGate
  */
 
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { LoginScreen } from './auth/LoginScreen.jsx';
+import { OnboardingFlow } from './onboarding/OnboardingFlow.jsx';
+import { useTranslation } from '../i18n/index.jsx';
+import { isOnboarded } from '../services/dataService.js';
 
 export function AuthGate({ children }) {
+  const { t } = useTranslation();
   const { user, loading, hydrating, hydrationError, clearHydrationError, retryHydration } = useAuth();
+  const [onboarded, setOnboarded] = useState(null); // null = checking
+
+  useEffect(() => {
+    if (!user) { setOnboarded(null); return; }
+    // Check localStorage (fast, synchronous)
+    setOnboarded(isOnboarded());
+  }, [user]);
 
   if (loading) {
     return (
@@ -30,6 +43,30 @@ export function AuthGate({ children }) {
 
   if (!user) {
     return <LoginScreen />;
+  }
+
+  // Show onboarding if not completed
+  if (onboarded === false) {
+    return (
+      <OnboardingFlow
+        user={user}
+        onComplete={() => setOnboarded(true)}
+      />
+    );
+  }
+
+  // Still checking onboarding status (brief flash)
+  if (onboarded === null) {
+    return (
+      <div className="fixed inset-0 bg-background flex flex-col items-center justify-center gap-4">
+        <span
+          className="material-symbols-outlined text-primary animate-pulse"
+          style={{ fontSize: '64px', fontVariationSettings: "'FILL' 1" }}
+        >
+          neurology
+        </span>
+      </div>
+    );
   }
 
   return (

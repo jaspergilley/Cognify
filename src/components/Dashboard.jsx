@@ -16,6 +16,7 @@ import {
   getLastSessionDate, loadSettings,
 } from '../services/dataService.js';
 import { applyAudioSettings } from '../engine/audioFeedback.js';
+import { useTranslation } from '../i18n/index.jsx';
 
 import { TopAppBar } from './dashboard/TopAppBar.jsx';
 import { BottomNav } from './dashboard/BottomNav.jsx';
@@ -36,13 +37,14 @@ import { SettingsView } from './dashboard/SettingsView.jsx';
  * @param {number} props.hz - Display refresh rate
  */
 export function Dashboard({ onStartSession, ex2Available, ex3Available, devUnlock, hz, defaultTab }) {
+  const { setLocale } = useTranslation();
   const [activeTab, setActiveTab] = useState(defaultTab || 'home');
   const [subView, setSubView] = useState(null); // null | 'goals' | 'export' | 'whats_new' | 'settings'
 
   // Clear sub-view when tab changes
   useEffect(() => { setSubView(null); }, [activeTab]);
 
-  // Apply saved settings on mount (audio + dark mode)
+  // Apply saved settings on mount (audio + dark mode + accessibility)
   useEffect(() => {
     const settings = loadSettings();
     applyAudioSettings(settings);
@@ -50,7 +52,16 @@ export function Dashboard({ onStartSession, ex2Available, ex3Available, devUnloc
       document.documentElement.classList.add('dark');
       document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#1a1c1a');
     }
-  }, []);
+    if (settings.fontSize && settings.fontSize !== 'normal') {
+      document.documentElement.setAttribute('data-font-size', settings.fontSize);
+    }
+    if (settings.highContrast) {
+      document.documentElement.classList.add('high-contrast');
+    }
+    if (settings.language && settings.language !== 'en') {
+      setLocale(settings.language);
+    }
+  }, [setLocale]);
 
   const data = useMemo(() => {
     const ex1Count = getCompletedSessionCount(1);
