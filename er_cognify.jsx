@@ -1857,8 +1857,8 @@ function DashboardScreen({ appData, updateAppData, setScreen }) {
 
   useEffect(() => {
     const unlocks = { ...appData.exerciseUnlocks };
-    if (appData.lastThresholds[1] <= UNLOCK_EXERCISE_2_THRESHOLD) unlocks[2] = true;
-    if (appData.lastThresholds[2] <= UNLOCK_EXERCISE_3_THRESHOLD) unlocks[3] = true;
+    if (appData.lastThresholds[1] !== null && appData.lastThresholds[1] <= UNLOCK_EXERCISE_2_THRESHOLD) unlocks[2] = true;
+    if (appData.lastThresholds[2] !== null && appData.lastThresholds[2] <= UNLOCK_EXERCISE_3_THRESHOLD) unlocks[3] = true;
     if (JSON.stringify(unlocks) !== JSON.stringify(appData.exerciseUnlocks)) updateAppData({ exerciseUnlocks: unlocks });
   }, [appData.lastThresholds]);
 
